@@ -1,5 +1,20 @@
 # Version history
 
+## Reduce Memory 4.0 - optimize micro-upgrade (2026-09-24)
+
+- Aggressive and Emergency flush the modified list before every standby purge,
+  so dirty pages from the working-set and file-cache trims are released too.
+- Normal, Smooth, and AI Shield skip apps that immediately refault after a
+  trim (30-minute cooldown), like Aggressive already did.
+- Faster scans: cheap skip checks run before opening a process, executable
+  hashes are cached, and refault recovery no longer re-enumerates processes.
+  The Linux helper filters by process owner before reading `/proc` details.
+- Sturdier edges: the tray refresh survives a failed memory sample, the log
+  rotates instead of being deleted, and the native worker rejects an
+  overlong Windows directory path.
+- The full source, tests, and CI now live on `main` together with the
+  application.
+
 ## Reduce Memory 4.0 - final implementation audit
 
 - Added Linux hardware provenance, read-only scope matrix capture, and a real

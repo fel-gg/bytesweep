@@ -1,158 +1,151 @@
-# Reduce Memory 4.0
+<div align="center">
 
-Reduce Memory adalah tool kecil buat membantu RAM terasa lebih lega di Windows
-dan Linux. Keduanya punya engine terpisah karena cara Windows dan Linux
-mengelola memori memang berbeda.
+# 🧠 Reduce Memory
 
-Proyek ini adalah **Reduce Memory 4.0**, terinspirasi dari Reduce Memory v1.7
-buatan Sordum Team (BlueLife). Ini bukan klaim bahwa proyek ini adalah binary
-resmi Sordum; source AutoIt dan native engine di sini adalah pengembangan
-terpisah yang mempertahankan ide dasar working-set trimming dengan provenance
-dan lisensi upstream yang harus tetap diperiksa sebelum redistribusi.
-Di repo ini, alur tersebut kita kembangkan lagi: pilihan mode diperjelas,
-Aggressive dibuat lebih kuat, ada versi Smooth supaya tidak gampang bikin lag,
-dan ada pilihan untuk membersihkan file Temp.
+**Bikin RAM lega lagi di Windows dan Linux, tanpa menutup satu aplikasi pun.**
 
-Intinya tetap sederhana: minta sistem operasi melepas memori yang sedang tidak
-terlalu dibutuhkan. Program ini tidak membunuh aplikasi, bukan antivirus, dan
-bukan registry cleaner.
+[![Verify builds](https://github.com/fel-gg/memory-reduce/actions/workflows/verify.yml/badge.svg?branch=main)](https://github.com/fel-gg/memory-reduce/actions/workflows/verify.yml)
+[![Release](https://img.shields.io/github/v/release/fel-gg/memory-reduce?label=release)](https://github.com/fel-gg/memory-reduce/releases/latest)
+![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-blue)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-Semua aplikasi tetap ditemukan secara dinamis. Normal dan Smooth melihat
-foreground serta aktivitas CPU, sedangkan Aggressive memperluas kandidat ke
-aplikasi user/background yang lebih kecil. AI Shield sekarang benar-benar jalur
-terpisah: hanya mode itu yang menambahkan pola AI/GPU dan melindungi seluruh
-child process-nya. Proses inti milik root/system tetap di luar kandidat reclaim.
-Jadi software baru tetap ikut scan tanpa harus menunggu daftar nama diperbarui.
+</div>
 
-## Pilihan mode Windows
+Reduce Memory meminta sistem operasi melepas memori yang sedang tidak dipakai
+aplikasi di background, lalu **mengukur hasilnya dengan jujur**. Tidak ada proses
+yang dimatikan. Aplikasi tetap berjalan dan memuat ulang datanya sendiri saat
+dibutuhkan.
 
-- **Normal Optimize** — satu pass ringan untuk aplikasi background besar
-  (default minimal 96 MB); aplikasi foreground, aplikasi yang baru aktif, dan
-  proses yang sedang memakai CPU dilewati.
-- **AI Shield** — melindungi proses AI yang dikenali dan memangkas proses
-  background yang idle tanpa menjalankan purge memory-list global.
-- **Aggressive Smooth** — process trim konservatif biasa dan elevated ditambah
-  pelepasan standby prioritas rendah, tanpa full cache/list purge.
-- **Aggressive Release** — dua pass elevated dalam satu sesi terukur untuk
-  kandidat background mulai 4 MB. Di antaranya Windows menjalankan pelepasan working
-  set dan system file cache, lalu flush modified list dan purge standby list
-  (flush sesudah kedua trim supaya halaman dirty dari cache ikut lepas); setelah pass proses
-  terakhir, empty-working-set, flush-modified, dan purge-standby dijalankan
-  lagi supaya halaman dirty dari empty terakhir ikut dilepas. Worker kemudian
-  memberi aplikasi hidup waktu 3 detik untuk melakukan refault normal. Kalau
-  Available RAM turun lagi secara material (minimal 64 MB dan 20% dari gain
-  awal), satu recovery pass terbatas dijalankan untuk menangkap rebound pertama.
-  Recovery itu juga memerlukan bukti page fault pada proses yang sama, bukan
-  hanya perubahan angka RAM global.
-  Jendela yang
-  sedang dipakai dan proses kritis Windows tetap dilindungi, tetapi aplikasi
-  yang baru dipindah ke background boleh direclaim.
-- **Aggressive + Delete Temp** — menjalankan Aggressive Release lalu menawarkan
-  penghapusan permanen file dari `%TEMP%` dan `C:\Windows\Temp`. File yang
-  sedang dipakai akan dilewati.
-- **Emergency Release** — mode manual paling kuat dengan warning dan dua pass;
-  aplikasi foreground juga dapat dipangkas, tetapi proses tidak dimatikan.
+> Bukan antivirus, bukan registry cleaner, dan bukan "RAM booster" yang
+> menjanjikan angka ajaib. Yang ditampilkan hanya angka sebelum/sesudah yang
+> benar-benar terukur.
 
-Saat dibuka, program tidak langsung meminta izin administrator. Izin tersebut
-baru diminta ketika kamu memilih operasi yang memang membutuhkannya.
+---
 
-Kalau **Automatically start at Windows startup** diaktifkan dari Options,
-program menunggu 10 detik setelah login, menjalankan satu **Normal** pass tanpa
-jendela/UAC, lalu tetap menjadi monitor tersembunyi. Saat RAM mencapai 95% pada
-dua pemeriksaan berturut-turut, Normal pass dijalankan lagi. Cooldown 5 menit
-dan titik re-arm 90% mencegah loop trim berulang. Mode manual yang dipilih di
-dropdown tidak diubah; startup sengaja tidak menjalankan Emergency/Aggressive
-supaya login tidak tersendat.
+## ✨ Kenapa Reduce Memory
 
-Setelah Optimize, hasil langsung tampil di jendela utama. Angka **working set**
-berasal hanya dari pasangan pengukuran proses yang valid sebelum/sesudah trim,
-sedangkan angka **available** berasal dari statistik RAM Windows; keduanya
-sengaja tidak dicampur. Kalau pembacaan sesudah trim gagal, operasinya tetap
-dicatat tetapi hasil memorinya ditulis `unknown`, bukan menganggap seluruh
-angka sebelumnya sudah lepas. Pertumbuhan memori juga tetap terlihat sebagai
-`increased`, bukan diubah menjadi keberhasilan 0 MB. Worker Administrator juga
-mengembalikan jumlah pass, operasi trim,
-perubahan available RAM di dalam worker, dan tahap native yang benar-benar
-berhasil. Worker juga memisahkan peak gain, stable gain, jumlah rebound, dan
-recovery pass. Semua pass memakai baseline sesi pertama dan snapshot akhir per
-target, sehingga halaman yang diproses dua kali tidak disamakan dengan
-RAM bersih yang benar-benar tersedia. Lima belas detik kemudian hasil stabil
-dihitung ulang sekali lagi. Kalau memori masih langsung diambil kembali,
-rebound protection menahan operasi berat selama 60 detik. Ringkasan setiap
-operasi juga disimpan di `windows/ReduceMemory.log` dengan ukuran terbatas;
-saat mencapai 128 KB, log lama dipindah ke `ReduceMemory.log.1` alih-alih
-dihapus.
+- **Aman untuk aplikasi yang sedang dipakai.** Jendela aktif, aplikasi yang baru
+  dipakai, proses yang sedang sibuk CPU, dan proses inti Windows/Linux dilewati.
+- **Belajar dari hasil.** Aplikasi yang langsung "makan RAM lagi" setelah dipangkas
+  otomatis diberi jeda 30 menit, jadi tidak ada siklus trim → lag → trim.
+- **Hasil yang bisa dipercaya.** Perubahan working set per proses dan Available RAM
+  sistem dihitung terpisah. Kalau sesudah trim tidak bisa diukur, hasilnya ditulis
+  `unknown`, bukan dianggap berhasil.
+- **Dua engine asli.** Windows memakai working-set trim + memory list; Linux memakai
+  `process_madvise(MADV_PAGEOUT)` dan cgroup v2. Bukan port setengah jadi.
+- **Aplikasi baru otomatis ikut.** Kandidat dipilih dari perilaku proses, bukan dari
+  daftar nama aplikasi.
 
-Pemindaian Windows sekarang memakai satu handle per kandidat: path, working set
-sebelum, operasi trim, dan working set sesudah dibaca dari proses yang sama.
-Saat recovery dibutuhkan, hanya proses yang benar-benar mengambil kembali
-minimal 16 MB sejak pass terakhir yang ditrim ulang. Jadi recovery tidak lagi
-menyapu semua aplikasi hanya karena angka RAM sistem berubah, dan tidak
-memproses target yang working set-nya naik tanpa aktivitas page fault nyata.
-Worker native juga mencatat alasan kandidat dilewati atau gagal (protected,
-filter, foreground, akses, Windows path, ukuran, query, dan trim), sehingga
-hasil nol dapat didiagnosis tanpa menebak.
+## 🚀 Mulai cepat
 
-Aggressive menyimpan riwayat efektivitas kecil di
-`%LOCALAPPDATA%\ReduceMemory\effectiveness.ini`. Isinya hanya nama executable,
-jumlah percobaan, byte yang pernah dilepas, refault, dan waktu terakhir—tanpa
-PID atau full path. Maksimal 128 entri; entri tertua diganti agar aplikasi baru
-tetap dapat dipelajari. Setelah executable menunjukkan dua rebound nyata, Normal, Smooth, AI Shield,
-dan Aggressive memberinya cooldown 30 menit untuk mencegah siklus trim/refault
-yang membuat aplikasi tersendat. Emergency tetap mengabaikan cooldown ini.
+### Windows
 
-Untuk Aggressive dan Emergency, pass proses memakai worker C native sesuai
-arsitektur. Jika helper hilang, gagal, atau mengembalikan hasil malformed,
-aplikasi otomatis kembali ke pipeline AutoIt yang sudah tervalidasi; Normal,
-Smooth, AI Shield, dan startup tidak bergantung pada helper ini.
-Jika `ReduceMemoryWorker_x64.exe` atau `ReduceMemoryWorker.exe` diklik langsung,
-worker sekarang membuka aplikasi utama yang cocok dari folder yang sama. Worker
-tetap menolak argumen backend yang tidak valid dan tidak akan menjalankan trim
-seluruh sistem hanya karena file worker diklik.
+1. Download ZIP Windows dari [Releases](https://github.com/fel-gg/memory-reduce/releases/latest),
+   atau ambil folder [`windows/`](windows/) dari repo ini (build terbaru `main`).
+2. Simpan semua file di folder `windows/` bersama-sama.
+3. Jalankan `ReduceMemory_x64.exe` (64-bit) atau `ReduceMemory.exe` (32-bit).
+4. Pilih mode, klik **Optimize**.
 
-## Isi folder
+Izin Administrator hanya diminta saat mode yang dipilih memang membutuhkannya.
 
-- [`windows/ReduceMemory_x64.exe`](windows/ReduceMemory_x64.exe) — Windows 64-bit.
-- [`windows/ReduceMemory.exe`](windows/ReduceMemory.exe) — Windows 32-bit (x86).
-- [`windows/ReduceMemoryWorker_x64.exe`](windows/ReduceMemoryWorker_x64.exe) —
-  native process engine untuk Windows 64-bit.
-- [`windows/ReduceMemoryWorker.exe`](windows/ReduceMemoryWorker.exe) — native
-  process engine untuk Windows 32-bit.
-- [`windows/native/reduce_memory_worker.c`](windows/native/reduce_memory_worker.c) —
-  source C worker native; AutoIt tetap menjadi UI dan fallback kompatibel.
-- [`windows/ReduceMemory.ini`](windows/ReduceMemory.ini) — pengaturan Windows.
-- [`src/ReduceMemory.au3`](src/ReduceMemory.au3) — source utama AutoIt.
-- [`linux/ReduceMemory_Linux.sh`](linux/ReduceMemory_Linux.sh) — script untuk
-  Linux.
-- [`linux/native/reduce-memory-native`](linux/native/reduce-memory-native) —
-  native Linux syscall helper untuk page-out proses aplikasi.
-- [`linux/desktop/Install_Desktop.sh`](linux/desktop/Install_Desktop.sh) — installer
-  user-local yang menambahkan Reduce Memory ke menu aplikasi Linux.
-- [`linux/server/Install_Server.sh`](linux/server/Install_Server.sh) — installer command
-  `reduce-memory-server` untuk VPS, server headless, dan SSH.
-- [`docs/PROGRESS.md`](docs/PROGRESS.md) — catatan perkembangan upgrade.
+### Linux desktop
 
-## Self-test aman
-
-Self-test biasa tidak memangkas RAM atau membersihkan cache. Ia memeriksa pembacaan
-RAM/commit, CPU time, process-path WinAPI, seluruh jalur pemilihan kandidat
-Normal, keenam mode, AI Shield, parser hasil worker, logika rebound/recovery,
-logika trigger 95%/re-arm
-90%, minimum kandidat tiap profil, dan penulisan log:
-
-```powershell
-.\windows\ReduceMemory_x64.exe /RMSELFTEST
-.\windows\ReduceMemory.exe /RMSELFTEST
-.\windows\ReduceMemory_x64.exe /RMMONITORSELFTEST
-.\windows\ReduceMemory.exe /RMMONITORSELFTEST
-.\windows\ReduceMemory_x64.exe /RMMEASUREMENTSELFTEST
-.\windows\ReduceMemory.exe /RMMEASUREMENTSELFTEST
+```bash
+cd linux
+chmod +x ReduceMemory_Linux.sh desktop/Install_Desktop.sh
+./desktop/Install_Desktop.sh
 ```
 
-## Build Windows dari source
+Setelah itu buka **Reduce Memory** dari menu aplikasi.
 
-Sejak versi 2.9 proyek ini punya jalur build yang bisa diulang. Siapkan AutoIt 3.3.18.0
-portable dan Zig 0.16.0, lalu arahkan keduanya ke satu perintah ini:
+### Linux server / VPS
+
+```bash
+cd linux
+chmod +x ReduceMemory_Linux.sh server/Install_Server.sh
+sudo ./server/Install_Server.sh
+sudo reduce-memory-server smooth
+```
+
+Mode server bekerja lewat SSH/terminal, tanpa service, daemon, atau cron.
+
+## 🎛️ Pilih mode
+
+| Mode | Cocok untuk | Admin | Kekuatan |
+| --- | --- | :---: | --- |
+| **Normal Optimize** | Pemakaian harian | – | Aplikasi background besar (≥ 96 MB) yang idle |
+| **AI Shield** | Saat menjalankan AI/LLM lokal | – | Seperti Normal, tapi proses AI/GPU beserta child-nya dilindungi |
+| **Aggressive Smooth** | Rutin, tanpa bikin lag | ✅ | Trim elevated + lepas standby prioritas rendah |
+| **Aggressive Release** | RAM sudah sesak | ✅ | Dua pass + pelepasan memory list penuh + recovery rebound |
+| **Aggressive + Delete Temp** | Bersih-bersih sekaligus | ✅ | Aggressive, lalu menawarkan hapus `%TEMP%` dan `C:\Windows\Temp` |
+| **Emergency Release** | Darurat, sistem hampir macet | ✅ | Paling kuat, jendela aktif juga ikut dipangkas (ada konfirmasi) |
+
+Di Linux tersedia `normal`, `smooth`, `ai-shield`, `aggressive`, dan `status`/`check`
+(hanya membaca, tidak mengubah apa pun).
+
+## ⚙️ Cara kerja Aggressive (Windows)
+
+```mermaid
+flowchart LR
+    A[Pass proses 1] --> B[Empty working sets]
+    B --> C[Trim system file cache]
+    C --> D[Flush modified list]
+    D --> E[Purge standby list]
+    E --> F[Pass proses 2]
+    F --> G[Empty → Flush → Purge]
+    G --> H{Rebound material<br/>setelah 3 detik?}
+    H -- ya --> I[Recovery khusus proses<br/>yang benar-benar refault]
+    H -- tidak --> J[Ukur hasil]
+    I --> J
+```
+
+- Halaman "dirty" di-flush dulu sebelum purge, supaya ikut menjadi RAM kosong.
+- Recovery hanya menyentuh proses yang terbukti mengambil kembali ≥ 16 MB dengan
+  page fault nyata, bukan menyapu ulang semua aplikasi.
+- 15 detik kemudian hasil **stabil** dihitung ulang. Kalau RAM langsung terpakai
+  lagi, operasi berat ditahan 60 detik (rebound protection).
+
+Proses dipangkas oleh worker C native (x86/x64). Kalau worker hilang atau hasilnya
+tidak valid, aplikasi kembali ke engine AutoIt yang sudah tervalidasi.
+
+## 🛡️ Keamanan & privasi
+
+- **Tidak ada proses yang dimatikan.** Selain mode Emergency, jendela aktif selalu
+  dilindungi.
+- **Delete Temp bersifat permanen.** Aplikasi selalu minta konfirmasi, file yang
+  sedang dipakai dilewati, dan symlink/junction tidak pernah diikuti.
+- **Startup opsional.** Kalau diaktifkan, program menjalankan satu Normal pass
+  10 detik setelah login, lalu hanya berjalan lagi saat RAM ≥ 95% dua kali
+  berturut-turut (cooldown 5 menit, aktif lagi setelah turun ke 90%). Tidak ada
+  UAC dan tidak ada Aggressive/Emergency saat login.
+- **Data yang disimpan** hanya riwayat efektivitas kecil di
+  `%LOCALAPPDATA%\ReduceMemory\effectiveness.ini` (maksimal 128 entri, tanpa PID)
+  dan log ringkas `windows/ReduceMemory.log` yang dirotasi ke `.log.1` di 128 KB.
+
+## 🐧 Linux: kebutuhan
+
+- Kernel 5.10+, Python 3, Bash, `awk`, dan `sync`.
+- Page-out native membutuhkan `sudo` (izin ptrace dan `CAP_SYS_NICE`).
+- Swap aktif membantu kernel memindahkan memori anonymous yang dingin.
+- Proses root/system, kernel thread, locked memory, dan mapping khusus kernel
+  selalu dilewati.
+
+Detail lengkap ada di [`linux/README.md`](linux/README.md).
+
+## 📁 Isi repo
+
+```
+windows/   Aplikasi Windows (x86/x64), worker native, INI, script build
+  native/  Source worker C
+src/       Source utama AutoIt (UI + engine Windows)
+linux/     Launcher Bash, helper native Python, installer desktop & server
+tests/     Tes Windows, Linux, kontrak, benchmark, dan release
+docs/      Riwayat versi, support matrix, protokol worker, catatan progres
+```
+
+## 🔧 Build & tes dari source
+
+Siapkan **AutoIt 3.3.18.0** portable dan **Zig 0.16.0**, lalu:
 
 ```powershell
 .\windows\build.ps1 `
@@ -161,73 +154,38 @@ portable dan Zig 0.16.0, lalu arahkan keduanya ke satu perintah ini:
   -OutputDirectory C:\temp\ReduceMemory-build
 ```
 
-Output berisi frontend dan worker x86/x64 serta `BUILD-MANIFEST.json`. Build
-tidak menyentuh `windows/ReduceMemory.ini` dan tidak otomatis mengganti program
-yang sedang dipakai. CI mengunduh dua toolchain dengan checksum terpin,
-menjalankan self-test pada hasil build, lalu menguji trim hanya ke proses target
-yang sengaja dibuat untuk pengujian.
+Hasilnya frontend + worker x86/x64 dan `BUILD-MANIFEST.json`. Self-test aman
+(tidak memangkas RAM):
 
-## Versi Linux native
-
-Versi Linux bukan port dari `EmptyWorkingSet` Windows. Engine membaca proses dan
-mapping secara dinamis dari `/proc`, lalu memakai `pidfd_open` dan
-`process_madvise(MADV_PAGEOUT)` untuk meminta kernel mereclaim resident pages
-aplikasi yang idle. Normal memakai batas konservatif, Smooth menambah pelepasan
-file cache ringan, dan Aggressive memeriksa semua UID non-system dengan batas
-mapping lebih rendah. Aggressive melakukan page-out sebelum dan sesudah
-`drop_caches` plus `memory.reclaim` cgroup v2, menunggu refault pertama selama
-3 detik, lalu menambah paling banyak satu recovery pass jika rebound material
-terukur. Helper mengirim sampai
-64 mapping per syscall dan kembali ke panggilan satu-per-satu hanya ketika
-kernel memberi hasil parsial atau menolak batch. Bila swap tersedia, cgroup
-reclaim memakai `swappiness=max` untuk menarget anonymous memory; kernel lama
-otomatis mendapat format kompatibilitas.
-Aplikasi lama maupun software baru ikut tanpa daftar nama proses.
-
-Pemeriksaan environment yang aman bisa dijalankan dengan:
-
-```bash
-./linux/ReduceMemory_Linux.sh check
+```powershell
+.\windows\ReduceMemory_x64.exe /RMSELFTEST
+.\windows\ReduceMemory_x64.exe /RMMEASUREMENTSELFTEST
 ```
 
-Untuk pemakaian sederhana seperti aplikasi, pasang launcher satu kali:
+Tes Python:
 
 ```bash
-cd linux
-chmod +x ReduceMemory_Linux.sh desktop/Install_Desktop.sh
-./desktop/Install_Desktop.sh
+python -m unittest discover -s tests/contracts -p "test_*.py"
+python -m unittest discover -s tests/benchmark -p "test_*.py"
+python tests/linux/test_native_unit.py
 ```
 
-Setelah itu cari **Reduce Memory** dari menu aplikasi. Normal, Smooth, AI Shield,
-Aggressive, dan Status bisa dipilih tanpa menghafal command.
+Setiap push ke `main` diverifikasi CI di Windows serta Ubuntu 22.04/24.04:
+build dari source, trim nyata ke proses uji, refault recovery, engine
+Aggressive penuh, page-out Linux, dan installer.
 
-Untuk Linux Server/VPS:
+## 📚 Dokumen
 
-```bash
-cd linux
-chmod +x ReduceMemory_Linux.sh server/Install_Server.sh
-sudo ./server/Install_Server.sh
-reduce-memory-server
-sudo reduce-memory-server ai-shield
-```
+- [Riwayat versi](docs/VERSION_HISTORY.md)
+- [Platform yang sudah diuji](docs/SUPPORT-MATRIX.md)
+- [Protokol worker native](docs/WORKER-PROTOCOL.md)
+- [Catatan progres](docs/PROGRESS.md)
 
-Varian server membuka menu terminal melalui SSH dan tidak memasang desktop
-launcher, service, daemon, cron, atau automatic trigger.
+## 🙏 Kredit & lisensi
 
-Di Linux, page-out native membutuhkan kernel 5.10+, Python 3, izin ptrace, dan
-`CAP_SYS_NICE`; menu meminta `sudo` saat Normal, Smooth, AI Shield, atau
-Aggressive dipilih. Swap yang aktif memberi kernel tempat untuk memindahkan
-anonymous pages aplikasi yang dingin. Proses aktif/foreground, process tree
-Reduce Memory, locked memory, dan mapping khusus kernel dilewati. Perlindungan
-nama AI dan pemilik GPU hanya berlaku saat AI Shield dipilih.
+Terinspirasi dari **Reduce Memory v1.7** buatan Sordum Team (BlueLife). Proyek ini
+**bukan** binary resmi Sordum. Source AutoIt dan engine native di sini adalah
+pengembangan terpisah yang mempertahankan ide dasar working-set trimming. Periksa
+provenance dan lisensi upstream sebelum redistribusi.
 
-Kalau yang dicari adalah pemakaian rutin tanpa banyak gangguan, gunakan Smooth.
-Memory reclaim tidak menghapus virus dan tidak menghapus data aplikasi yang
-sedang aktif; Windows maupun Linux bisa memakai kembali memori itu ketika
-dibutuhkan.
-# Dukungan platform
-
-Rincian platform yang benar-benar sudah diuji dan batas klaim kompatibilitas
-ada di [docs/SUPPORT-MATRIX.md](docs/SUPPORT-MATRIX.md). Dokumen itu sengaja
-membedakan bukti Windows/Linux yang tersedia dari dukungan desain untuk
-software atau distro yang belum dijalankan di runner.
+Kode di repo ini dirilis dengan [MIT License](LICENSE).
