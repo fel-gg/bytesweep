@@ -132,10 +132,45 @@ tidak valid, aplikasi kembali ke engine AutoIt yang sudah tervalidasi.
 
 Detail lengkap ada di [`linux/README.md`](linux/README.md).
 
+## 🧪 Soal peringatan antivirus
+
+Beberapa antivirus kadang menandai `.exe` ini sebagai mencurigakan. Ini
+**false positive**, bukan karena ada virus. Penyebabnya:
+
+- Program di-compile dari **AutoIt**, dan banyak antivirus menandai semua
+  hasil compile AutoIt lewat heuristik, terlepas dari isinya.
+- Reduce Memory memang memakai API sistem yang "sensitif" di mata heuristik —
+  `EmptyWorkingSet`, membuka handle proses lain, memory-list Windows, dan
+  meminta hak Administrator. Semua ini wajar untuk pembersih RAM.
+- Binary belum ditandatangani (unsigned) sehingga belum punya reputasi.
+
+Yang bisa kamu lakukan untuk memastikan sendiri bahwa file ini bersih:
+
+1. **Cek hash.** Cocokkan file dengan
+   [`windows/SHA256SUMS-windows.txt`](windows/SHA256SUMS-windows.txt):
+
+   ```powershell
+   Get-FileHash -Algorithm SHA256 .\windows\ReduceMemory_x64.exe
+   ```
+
+2. **Scan di [VirusTotal](https://www.virustotal.com)** untuk melihat sendiri
+   berapa engine yang menandai dan mesin besar mana yang menyatakan bersih.
+
+3. **Build sendiri dari source.** Seluruh source ada di repo ini dan CI
+   membangun ulang binary dari source yang sama (lihat bagian di bawah). Kamu
+   tidak harus percaya file jadi — kamu bisa memeriksanya.
+
+4. **Laporkan false positive** ke vendor antivirus (mis.
+   [Microsoft](https://www.microsoft.com/wdsi/filesubmission)) supaya deteksi
+   keliru itu diperbaiki untuk semua orang.
+
+Program ini tidak menghapus, mengenkripsi, atau menyembunyikan apa pun, dan
+tidak mengubah pengaturan keamanan sistem.
+
 ## 📁 Isi repo
 
 ```
-windows/   Aplikasi Windows (x86/x64), worker native, INI, script build
+windows/   Aplikasi Windows (x86/x64), worker native, INI, hash, script build
   native/  Source worker C
 src/       Source utama AutoIt (UI + engine Windows)
 linux/     Launcher Bash, helper native Python, installer desktop & server
