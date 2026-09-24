@@ -35,7 +35,8 @@ Jadi software baru tetap ikut scan tanpa harus menunggu daftar nama diperbarui.
   pelepasan standby prioritas rendah, tanpa full cache/list purge.
 - **Aggressive Release** — dua pass elevated dalam satu sesi terukur untuk
   kandidat background mulai 4 MB. Di antaranya Windows menjalankan pelepasan working
-  set, modified list, standby list, dan system file cache; setelah pass proses
+  set dan system file cache, lalu flush modified list dan purge standby list
+  (flush sesudah kedua trim supaya halaman dirty dari cache ikut lepas); setelah pass proses
   terakhir, empty-working-set, flush-modified, dan purge-standby dijalankan
   lagi supaya halaman dirty dari empty terakhir ikut dilepas. Worker kemudian
   memberi aplikasi hidup waktu 3 detik untuk melakukan refault normal. Kalau
@@ -78,7 +79,9 @@ target, sehingga halaman yang diproses dua kali tidak disamakan dengan
 RAM bersih yang benar-benar tersedia. Lima belas detik kemudian hasil stabil
 dihitung ulang sekali lagi. Kalau memori masih langsung diambil kembali,
 rebound protection menahan operasi berat selama 60 detik. Ringkasan setiap
-operasi juga disimpan di `windows/ReduceMemory.log` dengan ukuran terbatas.
+operasi juga disimpan di `windows/ReduceMemory.log` dengan ukuran terbatas;
+saat mencapai 128 KB, log lama dipindah ke `ReduceMemory.log.1` alih-alih
+dihapus.
 
 Pemindaian Windows sekarang memakai satu handle per kandidat: path, working set
 sebelum, operasi trim, dan working set sesudah dibaca dari proses yang sama.

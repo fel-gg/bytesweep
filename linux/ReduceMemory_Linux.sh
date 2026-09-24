@@ -220,7 +220,10 @@ optional_cache_kb() {
   cached_kb="$(optional_numeric_meminfo Cached)" || return 1
   reclaimable_kb="$(optional_numeric_meminfo SReclaimable)" || return 1
   shared_kb="$(optional_numeric_meminfo Shmem)" || return 1
-  printf '%s\n' "$((cached_kb + reclaimable_kb - shared_kb))"
+  # Clamp like cache_kb so before/after cache figures use the same rule.
+  local result_kb=$((cached_kb + reclaimable_kb - shared_kb))
+  (( result_kb < 0 )) && result_kb=0
+  printf '%s\n' "${result_kb}"
 }
 
 distribution_name() {

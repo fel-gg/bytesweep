@@ -223,6 +223,7 @@ Global $RM_EffectivenessCacheRaw = ""
 Global $RM_EffectivenessCacheValues [ 6 ] = [ 5 , 0 , 0 , 0 , 0 , 0 ]
 Global $RM_EffectivenessCacheLoadedPath = ""
 Global $RM_EffectivenessCacheEntries = ObjCreate ( "Scripting.Dictionary" )
+Global $RM_ExecutableHashCache = ObjCreate ( "Scripting.Dictionary" )
 ; Startup is a separate silent Normal pass plus a tiny pressure monitor. It
 ; never runs an elevated/native memory-list purge, so Windows login does not
 ; produce a UAC prompt or an Emergency-mode stutter. The monitor only re-arms
@@ -451,6 +452,9 @@ Func RM_UpdateMemoryDisplay ( $A1E41404E44 = 0 )
 		Global $SSRM_UpdateMemoryDisplay = 1
 	EndIf
 	Local $A0141502E2D = MemGetStats ( )
+	; This runs every second from the tray loop; skip a failed sample instead of
+	; indexing an invalid result.
+	If Not IsArray ( $A0141502E2D ) Or $A0141502E2D [ 1 ] <= 0 Then Return
 	Local $A0441604F5B = RM_FormatMemorySize ( $A0141502E2D [ 1 ] )
 	Local $A4041702E28 = RM_FormatMemorySize ( $A0141502E2D [ 1 ] - $A0141502E2D [ 2 ] , 1 )
 	Local $A3741801E52 = RM_FormatMemorySize ( $A0141502E2D [ 2 ] , 1 )
@@ -801,9 +805,19 @@ EndFunc
 
 Func RM_GetExecutableHash ( $RM_ProcessPath )
 	If Not FileExists ( $RM_ProcessPath ) Then Return ""
+	; Hashing is the expensive part of an identity key, and the key is needed
+	; several times per target per session. Reuse a digest while the file's
+	; size and modification time are unchanged.
+	Local $RM_HashCacheKey = StringLower ( $RM_ProcessPath ) & "|" & FileGetSize ( $RM_ProcessPath ) & "|" & FileGetTime ( $RM_ProcessPath , 0 , 1 )
+	If IsObj ( $RM_ExecutableHashCache ) And $RM_ExecutableHashCache.Exists ( $RM_HashCacheKey ) Then Return $RM_ExecutableHashCache.Item ( $RM_HashCacheKey )
 	Local $RM_Hash = _Crypt_HashFile ( $RM_ProcessPath , $CALG_SHA_256 )
 	If @error Or $RM_Hash = - 1 Then Return ""
-	Return StringUpper ( Hex ( $RM_Hash ) )
+	Local $RM_HashText = StringUpper ( Hex ( $RM_Hash ) )
+	If IsObj ( $RM_ExecutableHashCache ) Then
+		If $RM_ExecutableHashCache.Count >= 512 Then $RM_ExecutableHashCache.RemoveAll ( )
+		$RM_ExecutableHashCache.Add ( $RM_HashCacheKey , $RM_HashText )
+	EndIf
+	Return $RM_HashText
 EndFunc
 
 Func RM_EffectivenessFileUsable ( )
@@ -1017,7 +1031,8 @@ Func RM_RunRefaultRecovery ( $RM_Profile )
 	If $RM_ProtectForeground = 1 Then $RM_ForegroundPID = WinGetProcess ( "[ACTIVE]" )
 	For $RM_TargetIndex = 1 To $RM_LastPassTargetCount
 		Local $RM_TargetPID = $RM_LastPassTargetPIDs [ $RM_TargetIndex ]
-		If Not ProcessExists ( $RM_TargetPID ) Then ContinueLoop
+		; No ProcessExists() snapshot per target: an exited PID fails to open in
+		; RM_ShouldSkipProcess, and a reused PID fails the birth-time check below.
 		Local $RM_CurrentWorkingSet = 0 , $RM_TargetHandle = 0
 		If RM_ShouldSkipProcess ( $RM_LastPassTargetNames [ $RM_TargetIndex ] , $RM_TargetPID , $RM_ForegroundPID , $RM_Profile , $RM_CurrentWorkingSet , $RM_TargetHandle ) Then ContinueLoop
 		If StringLen ( $RM_LastPassTargetBirth [ $RM_TargetIndex ] ) > 0 And RM_GetProcessBirthFromHandle ( $RM_TargetHandle ) <> $RM_LastPassTargetBirth [ $RM_TargetIndex ] Then
@@ -1095,12 +1110,14 @@ Func RM_AggressiveRelease ( $RM_Smooth = 0 , $RM_ProcessProfile = 2 )
 		$RM_ProcessReleasedBytes += $RM_LastTrimReleasedBytes
 		$RM_ThisPasses += 1
 		$RM_EmptyStatus = RM_MemoryListCommand ( 2 )
-		$RM_FlushStatus = RM_MemoryListCommand ( 3 )
 		If $RM_EmptyStatus = 0 Then $RM_ThisNativeSteps += 1
-		If $RM_FlushStatus = 0 Then $RM_ThisNativeSteps += 1
 		Local $RM_CacheResult = DllCall ( "kernel32.dll" , "bool" , "SetSystemFileCacheSize" , "ulong_ptr" , -1 , "ulong_ptr" , -1 , "dword" , 0 )
 		If Not @error And IsArray ( $RM_CacheResult ) And $RM_CacheResult [ 0 ] <> 0 Then $RM_CacheOk = 1
 		If $RM_CacheOk = 1 Then $RM_ThisNativeSteps += 1
+		; Flush after both trims so dirty pages from the process working sets and
+		; the system file cache all reach standby before the purge below.
+		$RM_FlushStatus = RM_MemoryListCommand ( 3 )
+		If $RM_FlushStatus = 0 Then $RM_ThisNativeSteps += 1
 		; Purge last so pages released by the system file-cache trim do not remain
 		; on the standby list after the stronger manual mode finishes.
 		Sleep ( 150 )
@@ -1552,7 +1569,8 @@ EndFunc
 
 Func RM_WriteLog ( $RM_StableGain , $RM_ReboundDetected )
 	Local $RM_LogPath = @ScriptDir & "\ReduceMemory.log"
-	If FileExists ( $RM_LogPath ) And FileGetSize ( $RM_LogPath ) > 131072 Then FileDelete ( $RM_LogPath )
+	; Rotate instead of deleting so the previous 128 KB of history survives.
+	If FileExists ( $RM_LogPath ) And FileGetSize ( $RM_LogPath ) > 131072 Then FileMove ( $RM_LogPath , $RM_LogPath & ".1" , 1 )
 	Local $RM_ReboundValue = "no"
 	If $RM_ReboundDetected = 1 Then $RM_ReboundValue = "yes"
 	Local $RM_ImmediateLog = RM_FormatKnownMB ( $RM_ImmediateGainKnown , $RM_ImmediateGainMB )
@@ -1597,7 +1615,7 @@ Func RM_RunSilentNormalPass ( $RM_Reason )
 		If StringLen ( $RM_ProcessRule ) > 1 Then $RM_IncludeOnly = 1
 	EndIf
 	RM_ResetSessionMeasurements ( )
-	Local $RM_Trimmed = A2A20200810 ( $RM_IncludeOnly , $RM_ProcessRule )
+	Local $RM_Trimmed = A2A20200810 ( $RM_IncludeOnly , $RM_ProcessRule , $RM_PROFILE_NORMAL )
 	RM_ResetLastWorkerMetrics ( )
 	$RM_LastTrimmedCount = $RM_Trimmed
 	Local $RM_SessionKnown = 0
@@ -1794,7 +1812,7 @@ Func RM_DeleteTempTree ( $RM_Root , ByRef $RM_Deleted , ByRef $RM_Skipped , $RM_
 		Local $RM_Name = FileFindNextFile ( $RM_Search )
 		If @error Then ExitLoop
 		If $RM_Name = "." Or $RM_Name = ".." Then ContinueLoop
-		Local $RM_Path = $RM_Root & "\\" & $RM_Name
+		Local $RM_Path = $RM_Root & "\" & $RM_Name
 		If RM_IsReparsePoint ( $RM_Path ) Then
 			$RM_Skipped += 1
 			ContinueLoop
@@ -3526,6 +3544,18 @@ Func RM_ShouldSkipProcess ( $RM_ProcessName , $RM_ProcessPID , $RM_ForegroundPID
 	If $RM_Profile = $RM_PROFILE_AI_SHIELD And StringInStr ( $RM_AIShieldPIDs , "|" & $RM_ProcessPID & "|" ) > 0 Then Return 1
 	Local $RM_Protected = "|system idle process|system|registry|memory compression|secure system|csrss.exe|smss.exe|wininit.exe|winlogon.exe|services.exe|lsass.exe|dwm.exe|audiodg.exe|fontdrvhost.exe|"
 	If StringInStr ( $RM_Protected , "|" & $RM_Name & "|" ) > 0 Then Return 1
+	; Decide everything that needs no process handle first, so skipped
+	; foreground/recent/CPU-busy processes cost no OpenProcess or path query.
+	; Emergency is intentionally the only profile that may trim the foreground.
+	; Full Aggressive still protects the current window, but unlike Normal,
+	; Smooth, and AI Shield it may reclaim an app after it moves to background.
+	If $RM_Profile <> $RM_PROFILE_EMERGENCY Then
+		If $RM_ProtectForeground = 1 And $RM_ForegroundPID > 0 And $RM_ProcessPID = $RM_ForegroundPID Then Return 1
+	EndIf
+	If $RM_Profile = $RM_PROFILE_NORMAL Or $RM_Profile = $RM_PROFILE_SMOOTH Or $RM_Profile = $RM_PROFILE_AI_SHIELD Then
+		If $RM_RecentActivePID > 0 And $RM_ProcessPID = $RM_RecentActivePID And $RM_RecentActiveAt > 0 And TimerDiff ( $RM_RecentActiveAt ) < $RM_ActiveShieldSeconds * 1000 Then Return 1
+		If StringInStr ( $RM_CPUShieldPIDs , "|" & $RM_ProcessPID & "|" ) > 0 Then Return 1
+	EndIf
 	$RM_ProcessHandle = RM_OpenTrimProcess ( $RM_ProcessPID )
 	If $RM_ProcessHandle = 0 Then Return 1
 	Local $RM_Path = StringLower ( StringStripWS ( RM_GetProcessPathFromHandle ( $RM_ProcessHandle ) , 3 ) )
@@ -3538,28 +3568,6 @@ Func RM_ShouldSkipProcess ( $RM_ProcessName , $RM_ProcessPID , $RM_ForegroundPID
 	If StringRight ( $RM_WindowsRoot , 1 ) <> "\" Then $RM_WindowsRoot &= "\"
 	$RM_WindowsRoot = StringLower ( $RM_WindowsRoot )
 	If StringLen ( $RM_Path ) > 0 And StringLeft ( $RM_Path , StringLen ( $RM_WindowsRoot ) ) = $RM_WindowsRoot Then
-		RM_CloseProcessHandle ( $RM_ProcessHandle )
-		$RM_ProcessHandle = 0
-		Return 1
-	EndIf
-	; Emergency is intentionally the only profile that may trim the foreground.
-	; Full Aggressive still protects the current window, but unlike Normal,
-	; Smooth, and AI Shield it may reclaim an app after it moves to background.
-	If $RM_Profile <> $RM_PROFILE_EMERGENCY Then
-		If $RM_ProtectForeground = 1 And $RM_ForegroundPID > 0 And $RM_ProcessPID = $RM_ForegroundPID Then
-			RM_CloseProcessHandle ( $RM_ProcessHandle )
-			$RM_ProcessHandle = 0
-			Return 1
-		EndIf
-	EndIf
-	If $RM_Profile = $RM_PROFILE_NORMAL Or $RM_Profile = $RM_PROFILE_SMOOTH Or $RM_Profile = $RM_PROFILE_AI_SHIELD Then
-		If $RM_RecentActivePID > 0 And $RM_ProcessPID = $RM_RecentActivePID And $RM_RecentActiveAt > 0 And TimerDiff ( $RM_RecentActiveAt ) < $RM_ActiveShieldSeconds * 1000 Then
-			RM_CloseProcessHandle ( $RM_ProcessHandle )
-			$RM_ProcessHandle = 0
-			Return 1
-		EndIf
-	EndIf
-	If ( $RM_Profile = $RM_PROFILE_NORMAL Or $RM_Profile = $RM_PROFILE_SMOOTH Or $RM_Profile = $RM_PROFILE_AI_SHIELD ) And StringInStr ( $RM_CPUShieldPIDs , "|" & $RM_ProcessPID & "|" ) > 0 Then
 		RM_CloseProcessHandle ( $RM_ProcessHandle )
 		$RM_ProcessHandle = 0
 		Return 1

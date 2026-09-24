@@ -1,5 +1,37 @@
 # Upgrade progress
 
+## 2026-09-24 - Optimize micro-upgrade
+
+- Aggressive/Emergency final sequence is now empty -> flush modified -> purge
+  standby, so dirty pages from the final empty are released too. Native stage
+  target is 7 (Aggressive/Temp) and 14 (Emergency).
+- Aggressive's first release flushes the modified list after both the
+  working-set and system-file-cache trims, so dirty cache pages reach the
+  standby purge (stage count unchanged).
+- Churn cooldown now also applies to Normal, Smooth, and AI Shield; the
+  identity key is computed only after the cheap filters pass.
+- Candidate selection decides foreground, recently-active, and CPU-busy skips
+  before opening a process handle; decisions are identical, syscalls fewer.
+- Executable SHA-256 used by identity keys is memoized per path/size/mtime
+  (bounded to 512 entries) instead of rehashing every target several times
+  per session.
+- Refault recovery no longer takes a full process snapshot per target; exited
+  PIDs fail to open and reused PIDs fail the birth-time check.
+- Native worker resolves the Windows directory once per scan instead of once
+  per process; this also closes a one-character overflow when the directory
+  path is exactly 259 characters without a trailing separator.
+- The startup monitor's silent pass passes the Normal profile explicitly; the
+  tray refresh skips a failed `MemGetStats` sample instead of indexing it; the
+  log rotates to `ReduceMemory.log.1` at 128 KB instead of being deleted;
+  Temp cleanup joins paths with one separator.
+- Linux helper filters processes by owner before the remaining `/proc` reads;
+  the launcher clamps the post-run cache figure like the pre-run one.
+- Verification: Au3Check clean; Windows build contract with pinned Zig 0.16.0
+  and AutoIt 3.3.18.0 passes; x86/x64 self-tests, worker protocol, parent
+  death, Temp containment, and fixture trim pass; CI Aggressive gate completes
+  7/7 native stages. The CI MB figures come from shared runners, so no fixed
+  RAM gain is claimed.
+
 ## 2026-09-03 - Refault-aware native diagnostics
 
 - Native Windows worker now records working set and `PageFaultCount` after each

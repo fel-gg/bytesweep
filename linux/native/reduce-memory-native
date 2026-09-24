@@ -476,11 +476,11 @@ def snapshot_processes(
         if pid <= 2 or pid == os.getpid():
             continue
         parsed = parse_status(pid)
-        ticks = cpu_ticks(pid)
-        starttime = process_starttime(pid)
-        if parsed is None or ticks is None or starttime is None or not process_has_executable(pid):
+        if parsed is None:
             continue
         uid, rss_kb, ppid, name = parsed
+        # Filter by owner before the remaining /proc reads: most skipped
+        # processes belong to root, services, or other users.
         if not all_users and target_uid is not None and uid != target_uid:
             continue
         if all_users:
@@ -488,6 +488,10 @@ def snapshot_processes(
                 continue
             if uid < 1000 and not include_service_users:
                 continue
+        ticks = cpu_ticks(pid)
+        starttime = process_starttime(pid)
+        if ticks is None or starttime is None or not process_has_executable(pid):
+            continue
         snapshots.append(
             ProcessSnapshot(
                 pid, uid, rss_kb, ticks, ppid, name, process_command_line(pid), starttime
