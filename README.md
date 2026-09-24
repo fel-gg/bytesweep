@@ -134,17 +134,30 @@ Detail lengkap ada di [`linux/README.md`](linux/README.md).
 
 ## 🧪 Soal peringatan antivirus
 
-Beberapa antivirus kadang menandai `.exe` ini sebagai mencurigakan. Ini
-**false positive**, bukan karena ada virus. Penyebabnya:
+Beberapa antivirus menandai `.exe` ini sebagai mencurigakan. Ini **false
+positive heuristik**, bukan virus. Penyebabnya:
 
-- Program di-compile dari **AutoIt**, dan banyak antivirus menandai semua
-  hasil compile AutoIt lewat heuristik, terlepas dari isinya.
+- Program di-compile dari **AutoIt**, dan banyak engine menandai semua hasil
+  compile AutoIt lewat heuristik, terlepas dari isinya.
 - Reduce Memory memang memakai API sistem yang "sensitif" di mata heuristik —
   `EmptyWorkingSet`, membuka handle proses lain, memory-list Windows, dan
   meminta hak Administrator. Semua ini wajar untuk pembersih RAM.
 - Binary belum ditandatangani (unsigned) sehingga belum punya reputasi.
 
-Yang bisa kamu lakukan untuk memastikan sendiri bahwa file ini bersih:
+**Contoh hasil scan** (build `ReduceMemory.exe`,
+`26a1a893…09f1433`):
+[hasil VirusTotal](https://www.virustotal.com/gui/file/26a1a893eec1a0794615d03d63feb0b74825dafccac05acc415248f3e09f1433).
+Sekitar 17/70 engine menandai, dan hampir semuanya deteksi ML/heuristik
+generik (`DR/AutoIt.Gen`, `ML/PE-A`, `Wacatac.B!ml`, `malicious_confidence`).
+Engine mapan seperti **Kaspersky, ESET, BitDefender, Avast, Symantec, Trend
+Micro, G Data, dan Dr.Web menyatakan bersih**. Angka bisa berubah tiap build;
+buka link untuk melihat kondisi terbaru.
+
+> Karena Microsoft Defender termasuk yang menandai secara heuristik, sebagian
+> pengguna Windows mungkin melihat peringatan. Kalau itu terjadi, laporkan
+> sebagai false positive (lihat langkah 4) — cara paling efektif memperbaikinya.
+
+Yang bisa kamu lakukan untuk memastikan sendiri bahwa file ini aman:
 
 1. **Cek hash.** Cocokkan file dengan
    [`windows/SHA256SUMS-windows.txt`](windows/SHA256SUMS-windows.txt):
@@ -153,16 +166,17 @@ Yang bisa kamu lakukan untuk memastikan sendiri bahwa file ini bersih:
    Get-FileHash -Algorithm SHA256 .\windows\ReduceMemory_x64.exe
    ```
 
-2. **Scan di [VirusTotal](https://www.virustotal.com)** untuk melihat sendiri
-   berapa engine yang menandai dan mesin besar mana yang menyatakan bersih.
+2. **Scan sendiri di [VirusTotal](https://www.virustotal.com)** dan lihat
+   engine mapan mana yang menyatakan bersih, bukan hanya jumlah totalnya.
 
 3. **Build sendiri dari source.** Seluruh source ada di repo ini dan CI
    membangun ulang binary dari source yang sama (lihat bagian di bawah). Kamu
    tidak harus percaya file jadi — kamu bisa memeriksanya.
 
-4. **Laporkan false positive** ke vendor antivirus (mis.
-   [Microsoft](https://www.microsoft.com/wdsi/filesubmission)) supaya deteksi
-   keliru itu diperbaiki untuk semua orang.
+4. **Laporkan false positive** ke vendor antivirus. Untuk Microsoft Defender:
+   [microsoft.com/wdsi/filesubmission](https://www.microsoft.com/wdsi/filesubmission)
+   → pilih **"Incorrect detection"**. Deteksi keliru itu lalu diperbaiki untuk
+   semua pengguna.
 
 Program ini tidak menghapus, mengenkripsi, atau menyembunyikan apa pun, dan
 tidak mengubah pengaturan keamanan sistem.
