@@ -36,7 +36,8 @@ Jadi software baru tetap ikut scan tanpa harus menunggu daftar nama diperbarui.
 - **Aggressive Release** — dua pass elevated dalam satu sesi terukur untuk
   kandidat background mulai 4 MB. Di antaranya Windows menjalankan pelepasan working
   set, modified list, standby list, dan system file cache; setelah pass proses
-  terakhir, empty-working-set dan purge-standby dijalankan lagi. Worker kemudian
+  terakhir, empty-working-set, flush-modified, dan purge-standby dijalankan
+  lagi supaya halaman dirty dari empty terakhir ikut dilepas. Worker kemudian
   memberi aplikasi hidup waktu 3 detik untuk melakukan refault normal. Kalau
   Available RAM turun lagi secara material (minimal 64 MB dan 20% dari gain
   awal), satu recovery pass terbatas dijalankan untuk menangkap rebound pertama.
@@ -93,9 +94,9 @@ Aggressive menyimpan riwayat efektivitas kecil di
 `%LOCALAPPDATA%\ReduceMemory\effectiveness.ini`. Isinya hanya nama executable,
 jumlah percobaan, byte yang pernah dilepas, refault, dan waktu terakhir—tanpa
 PID atau full path. Maksimal 128 entri; entri tertua diganti agar aplikasi baru
-tetap dapat dipelajari. Setelah executable menunjukkan dua rebound nyata, mode
-Aggressive memberinya cooldown 30 menit untuk mencegah siklus trim/refault yang
-membuat aplikasi tersendat. Emergency tetap mengabaikan cooldown ini.
+tetap dapat dipelajari. Setelah executable menunjukkan dua rebound nyata, Normal, Smooth, AI Shield,
+dan Aggressive memberinya cooldown 30 menit untuk mencegah siklus trim/refault
+yang membuat aplikasi tersendat. Emergency tetap mengabaikan cooldown ini.
 
 Untuk Aggressive dan Emergency, pass proses memakai worker C native sesuai
 arsitektur. Jika helper hilang, gagal, atau mengembalikan hasil malformed,

@@ -74,17 +74,23 @@ static int selection_filter_selftest(void) {
     return 0;
 }
 
-static int path_location(HANDLE process) {
-    WCHAR path[32768];
-    WCHAR windows_path[MAX_PATH];
-    DWORD length = (DWORD)(sizeof(path) / sizeof(path[0]));
+/* Resolve the Windows directory once per scan, with a trailing separator.
+   Returns its length, or 0 when it is unavailable. */
+static UINT windows_directory_prefix(WCHAR *windows_path) {
     UINT windows_length = GetWindowsDirectoryW(windows_path, MAX_PATH);
-    if (!windows_length || windows_length >= MAX_PATH) return -1;
-    if (!QueryFullProcessImageNameW(process, 0, path, &length)) return -1;
+    if (!windows_length || windows_length >= MAX_PATH - 1) return 0;
     if (windows_path[windows_length - 1] != L'\\') {
         windows_path[windows_length++] = L'\\';
         windows_path[windows_length] = L'\0';
     }
+    return windows_length;
+}
+
+static int path_location(HANDLE process, const WCHAR *windows_path, UINT windows_length) {
+    WCHAR path[32768];
+    DWORD length = (DWORD)(sizeof(path) / sizeof(path[0]));
+    if (!windows_length) return -1;
+    if (!QueryFullProcessImageNameW(process, 0, path, &length)) return -1;
     return _wcsnicmp(path, windows_path, windows_length) == 0;
 }
 
@@ -273,6 +279,8 @@ static int run_trim(DWORD profile, DWORD foreground_pid, DWORD excluded_pid,
     TrimStats stats;
     LONGLONG resident_delta = 0;
     int mutated = 0, partial = 0;
+    WCHAR windows_path[MAX_PATH];
+    UINT windows_length;
     /* Validate in 64-bit arithmetic before narrowing to SIZE_T.  The x86
        worker must reject an unrepresentable threshold instead of silently
        wrapping it to a tiny value and trimming the wrong processes. */
@@ -281,6 +289,7 @@ static int run_trim(DWORD profile, DWORD foreground_pid, DWORD excluded_pid,
     SIZE_T minimum = (SIZE_T)minimum_bytes;
 
     ZeroMemory(&stats, sizeof(stats));
+    windows_length = windows_directory_prefix(windows_path);
     if (!write_handshake(handshake_path, session)) return 13;
     snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
     if (snapshot == INVALID_HANDLE_VALUE) return 10;
@@ -314,7 +323,7 @@ static int run_trim(DWORD profile, DWORD foreground_pid, DWORD excluded_pid,
         process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_SET_QUOTA,
                               FALSE, entry.th32ProcessID);
         if (!process) { ++stats.open_failed; continue; }
-        location = path_location(process);
+        location = path_location(process, windows_path, windows_length);
         if (location != 0) {
             if (location < 0) ++stats.path_failed; else ++stats.windows_process;
             CloseHandle(process);

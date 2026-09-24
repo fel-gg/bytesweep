@@ -1069,7 +1069,7 @@ Func RM_AggressiveRelease ( $RM_Smooth = 0 , $RM_ProcessProfile = 2 )
 	Local $RM_ProfilePrivilege = RM_EnablePrivilege ( "SeProfileSingleProcessPrivilege" )
 	Local $RM_QuotaPrivilege = RM_EnablePrivilege ( "SeIncreaseQuotaPrivilege" )
 	Local $RM_EmptyStatus = - 2 , $RM_FlushStatus = - 2 , $RM_PurgeStatus = - 2
-	Local $RM_FinalEmptyStatus = - 2 , $RM_FinalPurgeStatus = - 2
+	Local $RM_FinalEmptyStatus = - 2 , $RM_FinalFlushStatus = - 2 , $RM_FinalPurgeStatus = - 2
 	Local $RM_CacheOk = 0 , $RM_ProcessTrimmed = 0 , $RM_ProcessReleasedBytes = 0
 	Local $RM_ThisNativeSteps = 0 , $RM_ThisPasses = 0
 	Local $RM_ThisPeakGainKB = 0 , $RM_ThisStableGainKB = 0 , $RM_ThisReboundKB = 0 , $RM_ThisRecoveryPasses = 0
@@ -1116,6 +1116,10 @@ Func RM_AggressiveRelease ( $RM_Smooth = 0 , $RM_ProcessProfile = 2 )
 		; offered back to the Memory Manager before the result is measured.
 		$RM_FinalEmptyStatus = RM_MemoryListCommand ( 2 )
 		If $RM_FinalEmptyStatus = 0 Then $RM_ThisNativeSteps += 1
+		; Dirty pages trimmed by the final empty land on the modified list, which
+		; purge cannot release. Flush them to standby first so the purge frees them.
+		$RM_FinalFlushStatus = RM_MemoryListCommand ( 3 )
+		If $RM_FinalFlushStatus = 0 Then $RM_ThisNativeSteps += 1
 		Sleep ( 150 )
 		$RM_FinalPurgeStatus = RM_MemoryListCommand ( 4 )
 		If $RM_FinalPurgeStatus = 0 Then $RM_ThisNativeSteps += 1
@@ -1199,7 +1203,7 @@ Func RM_AggressiveRelease ( $RM_Smooth = 0 , $RM_ProcessProfile = 2 )
 	EndIf
 	$RM_WorkerRecoveryPasses += $RM_ThisRecoveryPasses
 	$RM_WorkerRefaultPageFaults += $RM_LastRecoveryPageFaults
-	$RM_LastAggressiveOk = ( $RM_ProcessTrimmed > 0 Or $RM_PurgeStatus = 0 Or $RM_EmptyStatus = 0 Or $RM_FinalPurgeStatus = 0 Or $RM_FinalEmptyStatus = 0 Or $RM_CacheOk = 1 )
+	$RM_LastAggressiveOk = ( $RM_ProcessTrimmed > 0 Or $RM_PurgeStatus = 0 Or $RM_EmptyStatus = 0 Or $RM_FinalPurgeStatus = 0 Or $RM_FinalEmptyStatus = 0 Or $RM_FinalFlushStatus = 0 Or $RM_CacheOk = 1 )
 	Local $RM_ThisReboundText = "unknown"
 	If $RM_ThisPeakKnown = 1 And $RM_ThisStableKnown = 1 Then $RM_ThisReboundText = Round ( $RM_ThisReboundKB / 1024 , 1 ) & " MB"
 	$RM_LastAggressiveDetail = "Privilege profile/quota: " & $RM_ProfilePrivilege & "/" & $RM_QuotaPrivilege & @CRLF & _
@@ -1214,6 +1218,7 @@ Func RM_AggressiveRelease ( $RM_Smooth = 0 , $RM_ProcessProfile = 2 )
 		"Flush modified list status: " & $RM_FlushStatus & @CRLF & _
 		"Initial purge standby status: " & $RM_PurgeStatus & @CRLF & _
 		"Final empty working sets status: " & $RM_FinalEmptyStatus & @CRLF & _
+		"Final flush modified list status: " & $RM_FinalFlushStatus & @CRLF & _
 		"Final purge standby status: " & $RM_FinalPurgeStatus & @CRLF & _
 		"System file cache: " & $RM_CacheOk
 	Return $RM_LastAggressiveOk
@@ -1537,9 +1542,9 @@ Func RM_GetNativeStageTarget ( )
 		Case $RM_MODE_SMOOTH
 			Return 1
 		Case $RM_MODE_EMERGENCY
-			Return 12
+			Return 14
 		Case $RM_MODE_AGGRESSIVE , $RM_MODE_TEMP
-			Return 6
+			Return 7
 		Case Else
 			Return 0
 	EndSwitch
@@ -3457,7 +3462,9 @@ Func A2A20200810 ( $A3C42101753 = 0 , $A6242203763 = "" , $RM_Profile = - 1 )
 	If Not IsArray ( $A5E4240211A ) Then Return 0
 	Local $RM_ForegroundPID = 0
 	Local $RM_FallbackChurnExclusions = "|"
-	If $RM_Profile = $RM_PROFILE_AGGRESSIVE Then $RM_FallbackChurnExclusions = RM_GetChurnExclusions ( )
+	; A process that refaulted right after a previous trim will refault again;
+	; skipping it saves work and stutter in every profile except Emergency.
+	If $RM_Profile <> $RM_PROFILE_EMERGENCY Then $RM_FallbackChurnExclusions = RM_GetChurnExclusions ( )
 	RM_TrackActiveProcess ( )
 	If $A3C42101753 = 0 And ( $RM_Profile = $RM_PROFILE_NORMAL Or $RM_Profile = $RM_PROFILE_SMOOTH Or $RM_Profile = $RM_PROFILE_AI_SHIELD ) Then
 		RM_BuildCPUShield ( )
@@ -3468,12 +3475,16 @@ Func A2A20200810 ( $A3C42101753 = 0 , $A6242203763 = "" , $RM_Profile = - 1 )
 	For $A17A0803B53 = 1 To $A5E4240211A [ 0 ] [ 0 ]
 		$A2B42506363 = StringInStr ( $A6242203763 , $A5580E05E46 & $A5E4240211A [ $A17A0803B53 ] [ 0 ] & $A5580E05E46 )
 		If ( $A3C42101753 = 0 And $A2B42506363 = 0 ) Or ( $A3C42101753 = 1 And $A2B42506363 <> 0 ) Then
-			If $RM_Profile = $RM_PROFILE_AGGRESSIVE And StringInStr ( $RM_FallbackChurnExclusions , "|" & RM_EffectivenessKey ( $A5E4240211A [ $A17A0803B53 ] [ 0 ] ) & "|" ) > 0 Then ContinueLoop
-
 			Local $RM_TargetPID = $A5E4240211A [ $A17A0803B53 ] [ 1 ]
 			Local $RM_BeforeWorkingSet = 0
 			Local $RM_TargetHandle = 0
 			If RM_ShouldSkipProcess ( $A5E4240211A [ $A17A0803B53 ] [ 0 ] , $RM_TargetPID , $RM_ForegroundPID , $RM_Profile , $RM_BeforeWorkingSet , $RM_TargetHandle ) Then ContinueLoop
+			; Checked after the cheap filters so the identity key (path + hash) is
+			; only computed for real candidates, and only when a cooldown exists.
+			If StringLen ( $RM_FallbackChurnExclusions ) > 1 And StringInStr ( $RM_FallbackChurnExclusions , "|" & RM_EffectivenessKey ( $A5E4240211A [ $A17A0803B53 ] [ 0 ] ) & "|" ) > 0 Then
+				RM_CloseProcessHandle ( $RM_TargetHandle )
+				ContinueLoop
+			EndIf
 			If $RM_Profile <> $RM_PROFILE_EMERGENCY And $RM_ProtectForeground = 1 And WinGetProcess ( "[ACTIVE]" ) = $RM_TargetPID Then
 				RM_CloseProcessHandle ( $RM_TargetHandle )
 				ContinueLoop
