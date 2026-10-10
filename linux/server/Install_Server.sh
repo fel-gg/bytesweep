@@ -19,15 +19,15 @@ fi
 
 installer_directory="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 linux_directory="$(cd -- "${installer_directory}/.." && pwd)"
-source_script="${linux_directory}/ReduceMemory_Linux.sh"
-source_native="${linux_directory}/native/reduce-memory-native"
-install_directory="${REDUCE_MEMORY_SERVER_BIN_DIR:-/usr/local/bin}"
-installed_script="${install_directory}/reduce-memory-server"
-installed_native="${install_directory}/reduce-memory-native"
+source_script="${linux_directory}/ByteSweep_Linux.sh"
+source_native="${linux_directory}/native/bytesweep-native"
+install_directory="${BYTESWEEP_SERVER_BIN_DIR:-/usr/local/bin}"
+installed_script="${install_directory}/bytesweep-server"
+installed_native="${install_directory}/bytesweep-native"
 
 if [[ "${1:-}" == "uninstall" ]]; then
   rm -f -- "${installed_script}" "${installed_native}"
-  printf '%s\n' 'Reduce Memory Linux Server berhasil dihapus dari prefix yang dipilih.'
+  printf '%s\n' 'ByteSweep Linux Server berhasil dihapus dari prefix yang dipilih.'
   exit 0
 fi
 
@@ -54,7 +54,7 @@ cp -- "${source_native}" "${installed_native}"
 chmod 0755 -- "${installed_script}"
 chmod 0755 -- "${installed_native}"
 
-printf '%s\n' 'Reduce Memory Linux Server berhasil dipasang.'
+printf '%s\n' 'ByteSweep Linux Server berhasil dipasang.'
 printf 'Buka menu SSH       : %s\n' "${installed_script}"
 printf 'Periksa status      : %s status\n' "${installed_script}"
 printf 'Normal (native)     : sudo %s normal\n' "${installed_script}"

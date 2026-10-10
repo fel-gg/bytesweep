@@ -6,7 +6,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$source = Join-Path $PSScriptRoot 'reduce_memory_worker.c'
+$source = Join-Path $PSScriptRoot 'bytesweep_worker.c'
 if (-not (Test-Path -LiteralPath $ZigPath -PathType Leaf)) {
     throw "Zig compiler is missing: $ZigPath"
 }
@@ -34,11 +34,11 @@ function Invoke-ZigCompile {
 
 Invoke-ZigCompile -Architecture 'x64' -Arguments @(
     'cc', '-target', 'x86_64-windows-gnu', '-Os', '-municode',
-    '-o', (Join-Path $OutputDirectory 'ReduceMemoryWorker_x64.exe'), $source,
+    '-o', (Join-Path $OutputDirectory 'ByteSweepWorker_x64.exe'), $source,
     '-lpsapi', '-lshell32', '-luser32'
 )
 Invoke-ZigCompile -Architecture 'x86' -Arguments @(
     'cc', '-target', 'x86-windows-gnu', '-Os', '-municode',
-    '-o', (Join-Path $OutputDirectory 'ReduceMemoryWorker.exe'), $source,
+    '-o', (Join-Path $OutputDirectory 'ByteSweepWorker.exe'), $source,
     '-lpsapi', '-lshell32', '-luser32'
 )

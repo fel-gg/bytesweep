@@ -10,11 +10,11 @@ except ImportError:  # Direct discovery with tests/contracts as the start direct
 
 class BaselineManifestTests(unittest.TestCase):
     def test_create_and_verify_staged_baseline(self):
-        with tempfile.TemporaryDirectory(prefix="reduce-memory-baseline-test-") as temp:
+        with tempfile.TemporaryDirectory(prefix="bytesweep-baseline-test-") as temp:
             root = Path(temp)
             source = root / "source.au3"
-            artifact = root / "ReduceMemory.exe"
-            config = root / "ReduceMemory.ini"
+            artifact = root / "ByteSweep.exe"
+            config = root / "ByteSweep.ini"
             source.write_text("source", encoding="utf-8")
             artifact.write_bytes(b"artifact")
             config.write_text("OptimizeMode=0\n", encoding="utf-8")
@@ -28,10 +28,10 @@ class BaselineManifestTests(unittest.TestCase):
             self.assertEqual(len(data["inputs"]), 3)
 
     def test_mutation_and_missing_file_are_detected(self):
-        with tempfile.TemporaryDirectory(prefix="reduce-memory-baseline-test-") as temp:
+        with tempfile.TemporaryDirectory(prefix="bytesweep-baseline-test-") as temp:
             root = Path(temp)
             source = root / "source.au3"
-            config = root / "ReduceMemory.ini"
+            config = root / "ByteSweep.ini"
             source.write_text("source", encoding="utf-8")
             config.write_text("config", encoding="utf-8")
             manifest = create_baseline(root / "baseline", (BaselineInput("source", source), BaselineInput("config", config)), source_commit="a1")
@@ -44,7 +44,7 @@ class BaselineManifestTests(unittest.TestCase):
                 verify_baseline(manifest)
 
     def test_non_empty_output_and_invalid_roles_cannot_overwrite(self):
-        with tempfile.TemporaryDirectory(prefix="reduce-memory-baseline-test-") as temp:
+        with tempfile.TemporaryDirectory(prefix="bytesweep-baseline-test-") as temp:
             root = Path(temp)
             source = root / "source"
             config = root / "config"
@@ -59,7 +59,7 @@ class BaselineManifestTests(unittest.TestCase):
                 create_baseline(root / "other", (BaselineInput("bad role", source), BaselineInput("config", config)), source_commit="a1")
 
     def test_duplicate_roles_and_missing_config_are_rejected(self):
-        with tempfile.TemporaryDirectory(prefix="reduce-memory-baseline-test-") as temp:
+        with tempfile.TemporaryDirectory(prefix="bytesweep-baseline-test-") as temp:
             root = Path(temp)
             source = root / "source"
             source.write_text("source", encoding="utf-8")

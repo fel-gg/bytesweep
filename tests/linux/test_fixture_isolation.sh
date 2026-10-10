@@ -14,10 +14,10 @@ trap cleanup EXIT
 
 set +e
 output="$(
-  REDUCE_MEMORY_TEST_MODE=1 \
-  REDUCE_MEMORY_TEST_ROOT="${temporary_root}" \
-  REDUCE_MEMORY_MEMINFO_FILE="${temporary_root}/meminfo" \
-  "${repository_root}/linux/ReduceMemory_Linux.sh" check 2>&1
+  BYTESWEEP_TEST_MODE=1 \
+  BYTESWEEP_TEST_ROOT="${temporary_root}" \
+  BYTESWEEP_MEMINFO_FILE="${temporary_root}/meminfo" \
+  "${repository_root}/linux/ByteSweep_Linux.sh" check 2>&1
 )"
 exit_code=$?
 set -e
@@ -30,15 +30,15 @@ grep -F 'wajib menunjuk fixture disposable' <<< "${output}" >/dev/null
 
 set +e
 outside_output="$(
-  REDUCE_MEMORY_TEST_MODE=1 \
-  REDUCE_MEMORY_TEST_ROOT="${temporary_root}" \
-  REDUCE_MEMORY_MEMINFO_FILE="${temporary_root}/meminfo" \
-  REDUCE_MEMORY_VM_ROOT="${temporary_root}/vm" \
-  REDUCE_MEMORY_TARGET_CGROUP="${temporary_root}/cgroup" \
-  REDUCE_MEMORY_NATIVE_HELPER=/bin/true \
-  REDUCE_MEMORY_SYNC_COMMAND="${temporary_root}/fake-sync" \
-  REDUCE_MEMORY_TEST_EFFECTIVE_UID=0 \
-  "${repository_root}/linux/ReduceMemory_Linux.sh" check 2>&1
+  BYTESWEEP_TEST_MODE=1 \
+  BYTESWEEP_TEST_ROOT="${temporary_root}" \
+  BYTESWEEP_MEMINFO_FILE="${temporary_root}/meminfo" \
+  BYTESWEEP_VM_ROOT="${temporary_root}/vm" \
+  BYTESWEEP_TARGET_CGROUP="${temporary_root}/cgroup" \
+  BYTESWEEP_NATIVE_HELPER=/bin/true \
+  BYTESWEEP_SYNC_COMMAND="${temporary_root}/fake-sync" \
+  BYTESWEEP_TEST_EFFECTIVE_UID=0 \
+  "${repository_root}/linux/ByteSweep_Linux.sh" check 2>&1
 )"
 outside_exit_code=$?
 set -e
@@ -46,5 +46,5 @@ if [[ "${outside_exit_code}" -ne 2 ]]; then
   printf 'Expected out-of-root adapter to fail with exit 2, got %s\n%s\n' "${outside_exit_code}" "${outside_output}" >&2
   exit 1
 fi
-grep -F 'berada di luar REDUCE_MEMORY_TEST_ROOT' <<< "${outside_output}" >/dev/null
+grep -F 'berada di luar BYTESWEEP_TEST_ROOT' <<< "${outside_output}" >/dev/null
 printf 'Linux fixture-isolation guard passed.\n'

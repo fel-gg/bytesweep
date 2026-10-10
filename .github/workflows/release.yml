@@ -43,8 +43,8 @@ jobs:
           if ((Get-Sha256Hex $autoItArchive) -ne $autoItExpected) { throw 'AutoIt checksum mismatch' }
           Expand-Archive -LiteralPath $autoItArchive -DestinationPath $autoItRoot -Force
           $autoIt = Join-Path $autoItRoot 'install'
-          $buildLog = Join-Path $env:RUNNER_TEMP 'reduce-memory-release-build.log'
-          $buildErr = Join-Path $env:RUNNER_TEMP 'reduce-memory-release-build.err'
+          $buildLog = Join-Path $env:RUNNER_TEMP 'bytesweep-release-build.log'
+          $buildErr = Join-Path $env:RUNNER_TEMP 'bytesweep-release-build.err'
           $buildArgs = @('-NoProfile','-ExecutionPolicy','Bypass','-File',
             (Join-Path (Get-Location) 'tests\windows\Build.Tests.ps1'),
             '-AutoItRoot',$autoIt,'-ZigPath',$zig,'-OutputDirectory',(Join-Path (Get-Location) 'windows'))
@@ -65,7 +65,7 @@ jobs:
           # A release must never inherit a developer's active profile. Keep
           # the user's local configuration untouched; only the packaged copy
           # receives the safe Normal default.
-          $releaseConfig = Join-Path (Get-Location) 'windows\ReduceMemory.ini'
+          $releaseConfig = Join-Path (Get-Location) 'windows\ByteSweep.ini'
           $releaseText = [System.Text.Encoding]::Unicode.GetString([System.IO.File]::ReadAllBytes($releaseConfig))
           $releaseText = [regex]::Replace($releaseText, '(?m)^OptimizeMode=[0-9]+(?=\r?$)', 'OptimizeMode=0')
           [System.IO.File]::WriteAllText($releaseConfig, $releaseText, [System.Text.Encoding]::Unicode)
@@ -74,11 +74,11 @@ jobs:
         with:
           name: tagged-windows-artifact
           path: |
-            windows/ReduceMemory.exe
-            windows/ReduceMemory_x64.exe
-            windows/ReduceMemoryWorker.exe
-            windows/ReduceMemoryWorker_x64.exe
-            windows/ReduceMemory.ini
+            windows/ByteSweep.exe
+            windows/ByteSweep_x64.exe
+            windows/ByteSweepWorker.exe
+            windows/ByteSweepWorker_x64.exe
+            windows/ByteSweep.ini
             windows/BUILD-MANIFEST.json
           if-no-files-found: error
 
@@ -106,18 +106,18 @@ jobs:
           version="${RELEASE_TAG#v}"
           mkdir -p dist audit
 
-          mkdir -p "audit/windows/ReduceMemory-Windows-v${version}/windows"
-          cp fresh-windows/*.exe fresh-windows/*.ini fresh-windows/BUILD-MANIFEST.json "audit/windows/ReduceMemory-Windows-v${version}/windows/"
-          git archive --format=tar --prefix="ReduceMemory-Windows-v${version}/" "${RELEASE_TAG}" README.md LICENSE | tar -x -C audit/windows
-          (cd audit/windows && zip -qr "../../dist/ReduceMemory-Windows-v${version}.zip" "ReduceMemory-Windows-v${version}")
+          mkdir -p "audit/windows/ByteSweep-Windows-v${version}/windows"
+          cp fresh-windows/*.exe fresh-windows/*.ini fresh-windows/BUILD-MANIFEST.json "audit/windows/ByteSweep-Windows-v${version}/windows/"
+          git archive --format=tar --prefix="ByteSweep-Windows-v${version}/" "${RELEASE_TAG}" README.md LICENSE | tar -x -C audit/windows
+          (cd audit/windows && zip -qr "../../dist/ByteSweep-Windows-v${version}.zip" "ByteSweep-Windows-v${version}")
 
           git -c tar.umask=0022 archive \
             --format=tar.gz \
-            --prefix="ReduceMemory-Linux-Desktop-v${version}/" \
-            --output="dist/ReduceMemory-Linux-Desktop-v${version}.tar.gz" \
+            --prefix="ByteSweep-Linux-Desktop-v${version}/" \
+            --output="dist/ByteSweep-Linux-Desktop-v${version}.tar.gz" \
             "${RELEASE_TAG}" \
-            linux/ReduceMemory_Linux.sh \
-            linux/native/reduce-memory-native \
+            linux/ByteSweep_Linux.sh \
+            linux/native/bytesweep-native \
             linux/desktop/Install_Desktop.sh \
             linux/README.md \
             README.md \
@@ -125,11 +125,11 @@ jobs:
 
           git -c tar.umask=0022 archive \
             --format=tar.gz \
-            --prefix="ReduceMemory-Linux-Server-v${version}/" \
-            --output="dist/ReduceMemory-Linux-Server-v${version}.tar.gz" \
+            --prefix="ByteSweep-Linux-Server-v${version}/" \
+            --output="dist/ByteSweep-Linux-Server-v${version}.tar.gz" \
             "${RELEASE_TAG}" \
-            linux/ReduceMemory_Linux.sh \
-            linux/native/reduce-memory-native \
+            linux/ByteSweep_Linux.sh \
+            linux/native/bytesweep-native \
             linux/server/Install_Server.sh \
             linux/README.md \
             README.md \
@@ -146,32 +146,32 @@ jobs:
           set -euo pipefail
           version="${RELEASE_TAG#v}"
 
-          unzip -oq "dist/ReduceMemory-Windows-v${version}.zip" -d audit/windows
-          windows_root="audit/windows/ReduceMemory-Windows-v${version}"
-          test -s "${windows_root}/windows/ReduceMemory_x64.exe"
-          test -s "${windows_root}/windows/ReduceMemory.exe"
-          test -s "${windows_root}/windows/ReduceMemoryWorker_x64.exe"
-          test -s "${windows_root}/windows/ReduceMemoryWorker.exe"
-          iconv -f UTF-16LE -t UTF-8 "${windows_root}/windows/ReduceMemory.ini" \
+          unzip -oq "dist/ByteSweep-Windows-v${version}.zip" -d audit/windows
+          windows_root="audit/windows/ByteSweep-Windows-v${version}"
+          test -s "${windows_root}/windows/ByteSweep_x64.exe"
+          test -s "${windows_root}/windows/ByteSweep.exe"
+          test -s "${windows_root}/windows/ByteSweepWorker_x64.exe"
+          test -s "${windows_root}/windows/ByteSweepWorker.exe"
+          iconv -f UTF-16LE -t UTF-8 "${windows_root}/windows/ByteSweep.ini" \
             | grep -F 'OptimizeMode=0'
 
-          tar -xzf "dist/ReduceMemory-Linux-Desktop-v${version}.tar.gz" -C audit
-          desktop_root="audit/ReduceMemory-Linux-Desktop-v${version}/linux"
-          test -x "${desktop_root}/ReduceMemory_Linux.sh"
-          test -x "${desktop_root}/native/reduce-memory-native"
+          tar -xzf "dist/ByteSweep-Linux-Desktop-v${version}.tar.gz" -C audit
+          desktop_root="audit/ByteSweep-Linux-Desktop-v${version}/linux"
+          test -x "${desktop_root}/ByteSweep_Linux.sh"
+          test -x "${desktop_root}/native/bytesweep-native"
           test -x "${desktop_root}/desktop/Install_Desktop.sh"
           test ! -e "${desktop_root}/server/Install_Server.sh"
-          "${desktop_root}/ReduceMemory_Linux.sh" check
-          "${desktop_root}/native/reduce-memory-native" check
+          "${desktop_root}/ByteSweep_Linux.sh" check
+          "${desktop_root}/native/bytesweep-native" check
 
-          tar -xzf "dist/ReduceMemory-Linux-Server-v${version}.tar.gz" -C audit
-          server_root="audit/ReduceMemory-Linux-Server-v${version}/linux"
-          test -x "${server_root}/ReduceMemory_Linux.sh"
-          test -x "${server_root}/native/reduce-memory-native"
+          tar -xzf "dist/ByteSweep-Linux-Server-v${version}.tar.gz" -C audit
+          server_root="audit/ByteSweep-Linux-Server-v${version}/linux"
+          test -x "${server_root}/ByteSweep_Linux.sh"
+          test -x "${server_root}/native/bytesweep-native"
           test -x "${server_root}/server/Install_Server.sh"
           test ! -e "${server_root}/desktop/Install_Desktop.sh"
-          "${server_root}/ReduceMemory_Linux.sh" status
-          "${server_root}/native/reduce-memory-native" check
+          "${server_root}/ByteSweep_Linux.sh" status
+          "${server_root}/native/bytesweep-native" check
 
           (
             cd dist
@@ -190,6 +190,6 @@ jobs:
           else
             gh release create "${RELEASE_TAG}" dist/* \
               --verify-tag \
-              --title "Reduce Memory ${version}" \
+              --title "ByteSweep ${version}" \
               --generate-notes
           fi

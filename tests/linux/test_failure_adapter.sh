@@ -26,7 +26,7 @@ EOF
 : > "${temporary_root}/vm/drop_caches"
 : > "${temporary_root}/cgroup/memory.reclaim"
 
-cat > "${temporary_root}/reduce-memory-native" <<'EOF'
+cat > "${temporary_root}/bytesweep-native" <<'EOF'
 #!/usr/bin/env bash
 if [[ "${1:-}" == "check" ]]; then
   printf 'native_status=supported\n'
@@ -42,11 +42,11 @@ printf 'protocol=2\nsession=%s\n' "${session}" >&2
 printf 'native_status=permission_denied\n' >&2
 exit 5
 EOF
-chmod +x "${temporary_root}/reduce-memory-native"
+chmod +x "${temporary_root}/bytesweep-native"
 
 cat > "${temporary_root}/fake-sync" <<'EOF'
 #!/usr/bin/env bash
-printf 'sync\n' >> "${REDUCE_MEMORY_TEST_SYNC_LOG:?}"
+printf 'sync\n' >> "${BYTESWEEP_TEST_SYNC_LOG:?}"
 EOF
 chmod +x "${temporary_root}/fake-sync"
 
@@ -69,20 +69,20 @@ chmod +x "${temporary_root}/bin/python3"
 
 output="$(
   env \
-    REDUCE_MEMORY_TEST_MODE=1 \
-    REDUCE_MEMORY_TEST_ROOT="${temporary_root}" \
-    REDUCE_MEMORY_MEMINFO_FILE="${temporary_root}/meminfo" \
-    REDUCE_MEMORY_VM_ROOT="${temporary_root}/vm" \
-    REDUCE_MEMORY_TARGET_CGROUP="${temporary_root}/cgroup" \
-    REDUCE_MEMORY_NATIVE_HELPER="${temporary_root}/reduce-memory-native" \
-    REDUCE_MEMORY_SYNC_COMMAND="${temporary_root}/fake-sync" \
-    REDUCE_MEMORY_TEST_EFFECTIVE_UID=0 \
-    REDUCE_MEMORY_KERNEL_NAME=Linux \
-    REDUCE_MEMORY_TEST_SYNC_LOG="${temporary_root}/sync.log" \
-    REDUCE_MEMORY_TARGET_UID=1000 \
-    REDUCE_MEMORY_SETTLE_SECONDS=0 \
+    BYTESWEEP_TEST_MODE=1 \
+    BYTESWEEP_TEST_ROOT="${temporary_root}" \
+    BYTESWEEP_MEMINFO_FILE="${temporary_root}/meminfo" \
+    BYTESWEEP_VM_ROOT="${temporary_root}/vm" \
+    BYTESWEEP_TARGET_CGROUP="${temporary_root}/cgroup" \
+    BYTESWEEP_NATIVE_HELPER="${temporary_root}/bytesweep-native" \
+    BYTESWEEP_SYNC_COMMAND="${temporary_root}/fake-sync" \
+    BYTESWEEP_TEST_EFFECTIVE_UID=0 \
+    BYTESWEEP_KERNEL_NAME=Linux \
+    BYTESWEEP_TEST_SYNC_LOG="${temporary_root}/sync.log" \
+    BYTESWEEP_TARGET_UID=1000 \
+    BYTESWEEP_SETTLE_SECONDS=0 \
     PATH="${temporary_root}/bin-success:/usr/bin:/bin" \
-    "${repository_root}/linux/ReduceMemory_Linux.sh" normal
+    "${repository_root}/linux/ByteSweep_Linux.sh" normal
 )"
 
 grep -F 'Native process page-out : pass1=permission_denied' <<< "${output}" >/dev/null
@@ -95,18 +95,18 @@ test ! -s "${temporary_root}/cgroup/memory.reclaim"
 dependency_output="$(
   env \
     PATH="${temporary_root}/bin:/usr/bin:/bin" \
-    REDUCE_MEMORY_TEST_MODE=1 \
-    REDUCE_MEMORY_TEST_ROOT="${temporary_root}" \
-    REDUCE_MEMORY_MEMINFO_FILE="${temporary_root}/meminfo" \
-    REDUCE_MEMORY_VM_ROOT="${temporary_root}/vm" \
-    REDUCE_MEMORY_TARGET_CGROUP="${temporary_root}/cgroup" \
-    REDUCE_MEMORY_NATIVE_HELPER="${temporary_root}/reduce-memory-native" \
-    REDUCE_MEMORY_SYNC_COMMAND="${temporary_root}/fake-sync" \
-    REDUCE_MEMORY_TEST_EFFECTIVE_UID=0 \
-    REDUCE_MEMORY_KERNEL_NAME=Linux \
-    REDUCE_MEMORY_TEST_SYNC_LOG="${temporary_root}/sync.log" \
-    REDUCE_MEMORY_SETTLE_SECONDS=0 \
-    "${repository_root}/linux/ReduceMemory_Linux.sh" normal
+    BYTESWEEP_TEST_MODE=1 \
+    BYTESWEEP_TEST_ROOT="${temporary_root}" \
+    BYTESWEEP_MEMINFO_FILE="${temporary_root}/meminfo" \
+    BYTESWEEP_VM_ROOT="${temporary_root}/vm" \
+    BYTESWEEP_TARGET_CGROUP="${temporary_root}/cgroup" \
+    BYTESWEEP_NATIVE_HELPER="${temporary_root}/bytesweep-native" \
+    BYTESWEEP_SYNC_COMMAND="${temporary_root}/fake-sync" \
+    BYTESWEEP_TEST_EFFECTIVE_UID=0 \
+    BYTESWEEP_KERNEL_NAME=Linux \
+    BYTESWEEP_TEST_SYNC_LOG="${temporary_root}/sync.log" \
+    BYTESWEEP_SETTLE_SECONDS=0 \
+    "${repository_root}/linux/ByteSweep_Linux.sh" normal
 )"
 grep -F 'python3 not installed' <<< "${dependency_output}" >/dev/null
 test "$(wc -l < "${temporary_root}/sync.log")" -eq 2
@@ -120,19 +120,19 @@ EOF
 chmod +x "${temporary_root}/failing-sync"
 sync_failure_output="$(
   env \
-    REDUCE_MEMORY_TEST_MODE=1 \
-    REDUCE_MEMORY_TEST_ROOT="${temporary_root}" \
-    REDUCE_MEMORY_MEMINFO_FILE="${temporary_root}/meminfo" \
-    REDUCE_MEMORY_VM_ROOT="${temporary_root}/vm" \
-    REDUCE_MEMORY_TARGET_CGROUP="${temporary_root}/cgroup" \
-    REDUCE_MEMORY_NATIVE_HELPER="${temporary_root}/reduce-memory-native" \
-    REDUCE_MEMORY_SYNC_COMMAND="${temporary_root}/failing-sync" \
-    REDUCE_MEMORY_TEST_EFFECTIVE_UID=0 \
-    REDUCE_MEMORY_KERNEL_NAME=Linux \
-    REDUCE_MEMORY_TARGET_UID=1000 \
-    REDUCE_MEMORY_SETTLE_SECONDS=0 \
+    BYTESWEEP_TEST_MODE=1 \
+    BYTESWEEP_TEST_ROOT="${temporary_root}" \
+    BYTESWEEP_MEMINFO_FILE="${temporary_root}/meminfo" \
+    BYTESWEEP_VM_ROOT="${temporary_root}/vm" \
+    BYTESWEEP_TARGET_CGROUP="${temporary_root}/cgroup" \
+    BYTESWEEP_NATIVE_HELPER="${temporary_root}/bytesweep-native" \
+    BYTESWEEP_SYNC_COMMAND="${temporary_root}/failing-sync" \
+    BYTESWEEP_TEST_EFFECTIVE_UID=0 \
+    BYTESWEEP_KERNEL_NAME=Linux \
+    BYTESWEEP_TARGET_UID=1000 \
+    BYTESWEEP_SETTLE_SECONDS=0 \
     PATH="${temporary_root}/bin-success:/usr/bin:/bin" \
-    "${repository_root}/linux/ReduceMemory_Linux.sh" normal
+    "${repository_root}/linux/ByteSweep_Linux.sh" normal
 )"
 grep -F 'Kernel sync             : failed' <<< "${sync_failure_output}" >/dev/null
 grep -F 'Native process page-out : pass1=permission_denied' <<< "${sync_failure_output}" >/dev/null

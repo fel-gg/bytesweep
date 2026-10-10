@@ -24,7 +24,7 @@ trial ketika menyentuh cache atau standby list.
 
 Workload private-memory untuk runner disposable tersedia di
 `workload_memory.py`. Fixture ini hanya mengalokasikan dan menyentuh halaman,
-menahan proses tetap hidup, lalu keluar; ia tidak menjalankan ReduceMemory atau
+menahan proses tetap hidup, lalu keluar; ia tidak menjalankan ByteSweep atau
 reclaim apa pun:
 
 ```text
@@ -46,7 +46,7 @@ python tests/benchmark/workload_memory.py --pattern retouch --ready-file build/f
 Smoke test aman:
 
 ```text
-python tests/benchmark/run_benchmark.py --baseline "python -c \"print('baseline')\"" --candidate "python -c \"print('candidate')\"" --noop "python -c \"print('noop')\"" --source src/ReduceMemory.au3 --output build/benchmark-smoke.json
+python tests/benchmark/run_benchmark.py --baseline "python -c \"print('baseline')\"" --candidate "python -c \"print('candidate')\"" --noop "python -c \"print('noop')\"" --source src/ByteSweep.au3 --output build/benchmark-smoke.json
 ```
 
 Untuk trial Windows yang memerlukan target private-memory disposable, gunakan
@@ -57,7 +57,7 @@ trial tersebut:
 
 ```powershell
 pwsh -NoProfile -File tests/benchmark/Windows-TrimTrial.ps1 `
-  -FrontendPath build/ReduceMemory_x64.exe `
+  -FrontendPath build/ByteSweep_x64.exe `
   -Action trim -Megabytes 256
 ```
 

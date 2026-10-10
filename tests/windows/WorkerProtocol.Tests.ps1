@@ -4,7 +4,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$ownedRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('ReduceMemory-protocol-' + [guid]::NewGuid().ToString('N'))
+$ownedRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('ByteSweep-protocol-' + [guid]::NewGuid().ToString('N'))
 
 function Invoke-Worker {
     param([string[]]$Arguments)
@@ -114,7 +114,7 @@ finally {
         $resolved = [IO.Path]::GetFullPath($ownedRoot)
         $temp = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
         if (-not $resolved.StartsWith($temp, [StringComparison]::OrdinalIgnoreCase) -or
-            -not (Split-Path -Leaf $resolved).StartsWith('ReduceMemory-protocol-', [StringComparison]::Ordinal)) {
+            -not (Split-Path -Leaf $resolved).StartsWith('ByteSweep-protocol-', [StringComparison]::Ordinal)) {
             throw "Refusing to remove unexpected fixture directory: $resolved"
         }
         Remove-Item -LiteralPath $resolved -Recurse -Force

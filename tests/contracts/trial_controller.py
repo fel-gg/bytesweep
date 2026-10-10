@@ -79,7 +79,7 @@ class _OwnedProcess:
 class TrialController:
     timeouts: PhaseTimeouts = field(default_factory=PhaseTimeouts)
     max_output_bytes: int = 65536
-    fixture_prefix: str = "ReduceMemory-trial-"
+    fixture_prefix: str = "ByteSweep-trial-"
 
     def run(
         self,

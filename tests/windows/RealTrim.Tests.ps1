@@ -1,7 +1,7 @@
 param(
     [string[]]$Binaries = @(
-        'windows\ReduceMemory_x64.exe',
-        'windows\ReduceMemory.exe'
+        'windows\ByteSweep_x64.exe',
+        'windows\ByteSweep.exe'
     )
 )
 
@@ -10,14 +10,14 @@ Set-StrictMode -Version 2.0
 
 $repositoryRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $tempRoot = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath())
-$fixtureRoot = Join-Path $tempRoot ('ReduceMemory-real-trim-' + [guid]::NewGuid().ToString('N'))
+$fixtureRoot = Join-Path $tempRoot ('ByteSweep-real-trim-' + [guid]::NewGuid().ToString('N'))
 $targetScript = Join-Path $fixtureRoot 'target.ps1'
 
 function Remove-OwnedFixtureDirectory {
     if (-not (Test-Path -LiteralPath $fixtureRoot -PathType Container)) { return }
     $resolvedPath = [System.IO.Path]::GetFullPath($fixtureRoot)
     if (-not $resolvedPath.StartsWith($tempRoot, [System.StringComparison]::OrdinalIgnoreCase) -or
-        -not (Split-Path -Leaf $resolvedPath).StartsWith('ReduceMemory-real-trim-', [System.StringComparison]::Ordinal)) {
+        -not (Split-Path -Leaf $resolvedPath).StartsWith('ByteSweep-real-trim-', [System.StringComparison]::Ordinal)) {
         throw "Refusing to remove unexpected fixture directory: $resolvedPath"
     }
     Remove-Item -LiteralPath $resolvedPath -Recurse -Force

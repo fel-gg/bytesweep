@@ -5,7 +5,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
-$owned = Join-Path ([IO.Path]::GetTempPath()) ('ReduceMemory-temp-test-' + [guid]::NewGuid().ToString('N'))
+$owned = Join-Path ([IO.Path]::GetTempPath()) ('ByteSweep-temp-test-' + [guid]::NewGuid().ToString('N'))
 $root = Join-Path $owned 'inside'
 $outside = Join-Path $owned 'outside'
 $result = Join-Path $owned 'result.txt'
@@ -15,7 +15,7 @@ $lockedStream = $null
 try {
     New-Item -ItemType Directory -Path $root,$outside | Out-Null
     $invalidResult = Join-Path $owned 'invalid-root-result.txt'
-    $invalidProbe = Start-Process -FilePath $AutoItPath -ArgumentList '/ErrorStdOut',(Join-Path $repositoryRoot 'src\ReduceMemory.au3'),'/RMTEMPTEST',('"C:\"'),('"{0}"' -f $invalidResult) -PassThru
+    $invalidProbe = Start-Process -FilePath $AutoItPath -ArgumentList '/ErrorStdOut',(Join-Path $repositoryRoot 'src\ByteSweep.au3'),'/RMTEMPTEST',('"C:\"'),('"{0}"' -f $invalidResult) -PassThru
     if (-not $invalidProbe.WaitForExit(15000)) {
         Stop-Process -Id $invalidProbe.Id -Force -ErrorAction SilentlyContinue
         throw 'Invalid broad-root probe timed out'
@@ -34,7 +34,7 @@ try {
     if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $junction)) { throw 'Could not create junction fixture' }
 
     $lockedStream = [IO.File]::Open($locked,[IO.FileMode]::Open,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None)
-    $process = Start-Process -FilePath $AutoItPath -ArgumentList '/ErrorStdOut',(Join-Path $repositoryRoot 'src\ReduceMemory.au3'),'/RMTEMPTEST',("`"$root`""),("`"$result`"") -PassThru
+    $process = Start-Process -FilePath $AutoItPath -ArgumentList '/ErrorStdOut',(Join-Path $repositoryRoot 'src\ByteSweep.au3'),'/RMTEMPTEST',("`"$root`""),("`"$result`"") -PassThru
     if (-not $process.WaitForExit(15000)) {
         Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
         throw 'Temp containment probe timed out'
@@ -57,7 +57,7 @@ try {
         cmd.exe /d /c "mklink /J `"$raceLink`" `"$outside`"" | Out-Null
         if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $raceLink)) { throw "Could not create bounded race fixture $iteration" }
         $raceResult = Join-Path $owned ("race-{0}.txt" -f $iteration)
-        $raceProbe = Start-Process -FilePath $AutoItPath -ArgumentList '/ErrorStdOut',(Join-Path $repositoryRoot 'src\ReduceMemory.au3'),'/RMTEMPTEST',("`"$raceRoot`""),("`"$raceResult`"") -PassThru
+        $raceProbe = Start-Process -FilePath $AutoItPath -ArgumentList '/ErrorStdOut',(Join-Path $repositoryRoot 'src\ByteSweep.au3'),'/RMTEMPTEST',("`"$raceRoot`""),("`"$raceResult`"") -PassThru
         if (-not $raceProbe.WaitForExit(15000)) {
             Stop-Process -Id $raceProbe.Id -Force -ErrorAction SilentlyContinue
             throw "Bounded Temp race probe $iteration timed out"
@@ -77,7 +77,7 @@ finally {
         $resolved = [IO.Path]::GetFullPath($owned)
         $temp = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
         if (-not $resolved.StartsWith($temp,[StringComparison]::OrdinalIgnoreCase) -or
-            -not (Split-Path -Leaf $resolved).StartsWith('ReduceMemory-temp-test-',[StringComparison]::Ordinal)) {
+            -not (Split-Path -Leaf $resolved).StartsWith('ByteSweep-temp-test-',[StringComparison]::Ordinal)) {
             throw "Refusing to remove unexpected fixture root: $resolved"
         }
         Remove-Item -LiteralPath $resolved -Recurse -Force

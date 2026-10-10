@@ -17,7 +17,7 @@ class WorkloadFixtureTests(unittest.TestCase):
         self.assertEqual(len(workload_memory.deterministic_page(page)), page)
 
     def test_retouch_waits_for_post_action_marker_and_records_checksum(self):
-        root = Path(tempfile.mkdtemp(prefix="reduce-memory-fixture-test-"))
+        root = Path(tempfile.mkdtemp(prefix="bytesweep-fixture-test-"))
         try:
             ready = root / "ready"
             retouch = root / "retouch"
@@ -58,7 +58,7 @@ class WorkloadFixtureTests(unittest.TestCase):
             root.rmdir()
 
     def test_file_cache_fixture_completes_with_real_backing_data(self):
-        with tempfile.TemporaryDirectory(prefix="reduce-memory-file-cache-") as root:
+        with tempfile.TemporaryDirectory(prefix="bytesweep-file-cache-") as root:
             ready = Path(root) / "ready"
             command = [
                 sys.executable,

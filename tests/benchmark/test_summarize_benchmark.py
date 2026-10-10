@@ -9,7 +9,7 @@ import summarize_benchmark
 
 class SummarizeBenchmarkTests(unittest.TestCase):
     def test_retained_samples_keep_nulls_out_of_numeric_summary(self):
-        with tempfile.TemporaryDirectory(prefix="reduce-memory-summary-test-") as root:
+        with tempfile.TemporaryDirectory(prefix="bytesweep-summary-test-") as root:
             root_path = Path(root)
             report = root_path / "raw.json"
             output = root_path / "summary.json"

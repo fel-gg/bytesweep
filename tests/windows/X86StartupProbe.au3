@@ -2,7 +2,7 @@
 ; bounded run can identify a runtime/API boundary without touching product
 ; state, registry settings, memory, or other processes.
 #include <Crypt.au3>
-Global $sMarker = @TempDir & "\ReduceMemory-x86-startup-probe-" & @AutoItPID & ".txt"
+Global $sMarker = @TempDir & "\ByteSweep-x86-startup-probe-" & @AutoItPID & ".txt"
 
 Func Mark($sValue)
 	Local $h = FileOpen($sMarker, 1 + 8)
@@ -13,7 +13,7 @@ Func Mark($sValue)
 EndFunc
 
 Mark("start")
-AutoItWinSetTitle("ReduceMemory x86 startup probe")
+AutoItWinSetTitle("ByteSweep x86 startup probe")
 Mark("title")
 Local $sOsArch = Execute(" @OSArch ")
 Mark("execute-osarch")
@@ -37,9 +37,9 @@ Local $sReg = RegRead("HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\S
 Mark("regread")
 FileChangeDir(@ScriptDir)
 Mark("changedir")
-Local $sIni = IniRead(@ScriptDir & "\ReduceMemory.ini", "Main", "OptimizeMode", @LF)
+Local $sIni = IniRead(@ScriptDir & "\ByteSweep.ini", "Main", "OptimizeMode", @LF)
 Mark("iniread")
-Local $sFixtureIni = @TempDir & "\ReduceMemory-x86-startup-probe.ini"
+Local $sFixtureIni = @TempDir & "\ByteSweep-x86-startup-probe.ini"
 IniWrite($sFixtureIni, "Main", "Language", "Auto")
 IniWrite($sFixtureIni, "Language_English", "Optimize", "Optimize")
 Local $aSections = IniReadSectionNames($sFixtureIni)
@@ -49,7 +49,7 @@ Local $tSid = DllStructCreate("byte SID[256]")
 Local $pSid = DllStructGetPtr($tSid)
 Local $aSid = DllCall("advapi32.dll", "bool", "LookupAccountNameW", "wstr", "", "wstr", "SystemUser", "ptr", $pSid, "dword*", 256, "wstr", "", "dword*", 256, "int*", 0)
 Mark("sid-lookup")
-Local $sConfig = @TempDir & "\ReduceMemory-x86-startup-probe-config.ini"
+Local $sConfig = @TempDir & "\ByteSweep-x86-startup-probe-config.ini"
 IniWrite($sConfig, "Main", "HideWindowOnStartup", "0")
 IniWrite($sConfig, "Main", "Language", "Auto")
 IniWrite($sConfig, "Language_English", "Optimize", "Optimize")
@@ -62,7 +62,7 @@ FileDelete($sConfig)
 Local $aVersion = StringRegExp(@OSVersion, "_(XP|200(0|3))", 0)
 Mark("regex")
 Opt("GUIOnEventMode", 1)
-Local $hWindow = GUICreate("ReduceMemory x86 UI probe", 420, 120)
+Local $hWindow = GUICreate("ByteSweep x86 UI probe", 420, 120)
 Local $nCombo = GUICtrlCreateCombo("", 10, 20, 390, 25, 3)
 GUICtrlSetData($nCombo, "Normal Optimize|AI Shield|Aggressive Release|Aggressive Smooth|Aggressive + Delete Temp|Emergency Release", "Normal Optimize")
 GUISetState(@SW_SHOW, $hWindow)

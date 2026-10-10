@@ -65,7 +65,7 @@ exit 0
 EOF
 chmod +x "${temporary_root}/fake-sync"
 
-cat > "${temporary_root}/reduce-memory-native" <<'EOF'
+cat > "${temporary_root}/bytesweep-native" <<'EOF'
 #!/usr/bin/env bash
 if [[ "${1:-}" == "reclaim" ]]; then
   session=""; path=""; bytes=""; previous=""
@@ -115,25 +115,25 @@ batch_calls=1
 fallback_calls=0
 RESULT
 EOF
-chmod +x "${temporary_root}/reduce-memory-native"
+chmod +x "${temporary_root}/bytesweep-native"
 
 common_env=(
-  "REDUCE_MEMORY_TEST_MODE=1"
-  "REDUCE_MEMORY_TEST_ROOT=${temporary_root}"
-  "REDUCE_MEMORY_TEST_EFFECTIVE_UID=0"
-  "REDUCE_MEMORY_KERNEL_NAME=Linux"
-  "REDUCE_MEMORY_MEMINFO_FILE=${temporary_root}/meminfo"
-  "REDUCE_MEMORY_VM_ROOT=${temporary_root}/vm"
-  "REDUCE_MEMORY_TARGET_CGROUP=${temporary_root}/cgroup"
-  "REDUCE_MEMORY_NATIVE_HELPER=${temporary_root}/reduce-memory-native"
-  "REDUCE_MEMORY_SYNC_COMMAND=${temporary_root}/fake-sync"
-  "REDUCE_MEMORY_TARGET_UID=1000"
-  "REDUCE_MEMORY_SETTLE_SECONDS=0"
-  "REDUCE_MEMORY_AGGRESSIVE_STABILIZE_SECONDS=1"
+  "BYTESWEEP_TEST_MODE=1"
+  "BYTESWEEP_TEST_ROOT=${temporary_root}"
+  "BYTESWEEP_TEST_EFFECTIVE_UID=0"
+  "BYTESWEEP_KERNEL_NAME=Linux"
+  "BYTESWEEP_MEMINFO_FILE=${temporary_root}/meminfo"
+  "BYTESWEEP_VM_ROOT=${temporary_root}/vm"
+  "BYTESWEEP_TARGET_CGROUP=${temporary_root}/cgroup"
+  "BYTESWEEP_NATIVE_HELPER=${temporary_root}/bytesweep-native"
+  "BYTESWEEP_SYNC_COMMAND=${temporary_root}/fake-sync"
+  "BYTESWEEP_TARGET_UID=1000"
+  "BYTESWEEP_SETTLE_SECONDS=0"
+  "BYTESWEEP_AGGRESSIVE_STABILIZE_SECONDS=1"
   "PATH=${temporary_root}/bin:/usr/bin:/bin"
 )
 
-aggressive_output="$(env "${common_env[@]}" REDUCE_MEMORY_RECLAIM_MB=1024 "${repository_root}/linux/ReduceMemory_Linux.sh" aggressive)"
+aggressive_output="$(env "${common_env[@]}" BYTESWEEP_RECLAIM_MB=1024 "${repository_root}/linux/ByteSweep_Linux.sh" aggressive)"
 assert_output_contains "${aggressive_output}" 'Process RSS change      : +128 MB'
 assert_output_contains "${aggressive_output}" 'Measured RSS targets    : 1'
 
@@ -141,10 +141,10 @@ assert_output_contains "${aggressive_output}" 'Measured RSS targets    : 1'
 # bounded request remains the explicit 1024 MiB fixture value, not an overflow
 # or negative number derived from memory.current.
 printf '%s\n' '99999999999999999999' > "${temporary_root}/cgroup/memory.current"
-bounded_output="$(env "${common_env[@]}" REDUCE_MEMORY_RECLAIM_MB=1024 "${repository_root}/linux/ReduceMemory_Linux.sh" aggressive)"
+bounded_output="$(env "${common_env[@]}" BYTESWEEP_RECLAIM_MB=1024 "${repository_root}/linux/ByteSweep_Linux.sh" aggressive)"
 assert_output_contains "${bounded_output}" 'cgroup memory.reclaim   : done (1024 MB requested;'
 
-cat > "${temporary_root}/reduce-memory-native" <<'EOF'
+cat > "${temporary_root}/bytesweep-native" <<'EOF'
 #!/usr/bin/env bash
 if [[ "${1:-}" == "reclaim" ]]; then
   session=""; path=""; bytes=""; previous=""
@@ -190,26 +190,26 @@ batch_calls=1
 fallback_calls=0
 RESULT
 EOF
-chmod +x "${temporary_root}/reduce-memory-native"
-normal_output="$(env "${common_env[@]}" "${repository_root}/linux/ReduceMemory_Linux.sh" normal)"
+chmod +x "${temporary_root}/bytesweep-native"
+normal_output="$(env "${common_env[@]}" "${repository_root}/linux/ByteSweep_Linux.sh" normal)"
 assert_output_contains "${normal_output}" 'Process RSS change      : -32 MB'
 
 cat > "${temporary_root}/invalidate-available" <<'EOF'
 #!/usr/bin/env bash
-sed -i 's/^MemAvailable:.*/MemAvailable:   unavailable kB/' "${REDUCE_MEMORY_MEMINFO_FILE:?}"
+sed -i 's/^MemAvailable:.*/MemAvailable:   unavailable kB/' "${BYTESWEEP_MEMINFO_FILE:?}"
 EOF
 chmod +x "${temporary_root}/invalidate-available"
 write_meminfo 10485760
 unknown_env=("${common_env[@]}")
 for index in "${!unknown_env[@]}"; do
-  if [[ "${unknown_env[${index}]}" == REDUCE_MEMORY_SYNC_COMMAND=* ]]; then
-    unknown_env[${index}]="REDUCE_MEMORY_SYNC_COMMAND=${temporary_root}/invalidate-available"
+  if [[ "${unknown_env[${index}]}" == BYTESWEEP_SYNC_COMMAND=* ]]; then
+    unknown_env[${index}]="BYTESWEEP_SYNC_COMMAND=${temporary_root}/invalidate-available"
   fi
 done
-unknown_output="$(env "${unknown_env[@]}" "${repository_root}/linux/ReduceMemory_Linux.sh" normal)"
+unknown_output="$(env "${unknown_env[@]}" "${repository_root}/linux/ByteSweep_Linux.sh" normal)"
 assert_output_contains "${unknown_output}" 'Available change        : unknown'
 
-cat > "${temporary_root}/reduce-memory-native" <<'EOF'
+cat > "${temporary_root}/bytesweep-native" <<'EOF'
 #!/usr/bin/env bash
 if [[ "${1:-}" == "reclaim" ]]; then
   session=""; path=""; bytes=""; previous=""
@@ -230,7 +230,7 @@ for argument in "$@"; do
   previous="${argument}"
 done
 printf 'protocol=2\nsession=%s\n' "${session}"
-state_file="${REDUCE_MEMORY_TEST_ROOT:?}/native-pass-count"
+state_file="${BYTESWEEP_TEST_ROOT:?}/native-pass-count"
 pass=0
 [[ -r "${state_file}" ]] && pass="$(<"${state_file}")"
 pass=$((pass + 1))
@@ -276,10 +276,10 @@ rss_target=4444|262144|131072|measured
 RESULT
 fi
 EOF
-chmod +x "${temporary_root}/reduce-memory-native"
+chmod +x "${temporary_root}/bytesweep-native"
 rm -f "${temporary_root}/native-pass-count"
 write_meminfo 10485760
-sticky_unknown_output="$(env "${common_env[@]}" REDUCE_MEMORY_RECLAIM_MB=1024 "${repository_root}/linux/ReduceMemory_Linux.sh" aggressive)"
+sticky_unknown_output="$(env "${common_env[@]}" BYTESWEEP_RECLAIM_MB=1024 "${repository_root}/linux/ByteSweep_Linux.sh" aggressive)"
 assert_output_contains "${sticky_unknown_output}" 'Process RSS change      : unknown'
 assert_output_contains "${sticky_unknown_output}" 'Measured RSS targets    : 0'
 assert_output_contains "${sticky_unknown_output}" 'Unmeasured advised      : 1'

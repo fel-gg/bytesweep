@@ -8,7 +8,7 @@ $domain = [string]$env:USERDOMAIN
 $user = [string]$env:USERNAME
 $scope = ($domain + '_' + $user).ToLowerInvariant() -replace '[^a-z0-9._-]', '_'
 if ([string]::IsNullOrWhiteSpace($scope)) { $scope = 'unknown-user' }
-$name = 'Local\ReduceMemory.Optimize.v3.' + $scope
+$name = 'Local\ByteSweep.Optimize.v3.' + $scope
 $created = $false
 $mutex = [Threading.Mutex]::new($false, $name, [ref]$created)
 try {

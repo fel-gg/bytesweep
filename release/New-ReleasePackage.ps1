@@ -2,7 +2,7 @@ param(
     [Parameter(Mandatory = $true)] [string]$WindowsStaging,
     [Parameter(Mandatory = $true)] [string]$LinuxRoot,
     [Parameter(Mandatory = $true)] [string]$OutputDirectory,
-    [string]$Version = '4.0',
+    [string]$Version = '4.1',
     [switch]$RequireClean
 )
 $ErrorActionPreference = 'Stop'
@@ -28,28 +28,28 @@ $verifier = Join-Path (Split-Path -Parent $PSScriptRoot) 'windows\Verify-BuildMa
 if (-not (Test-Path -LiteralPath $windowsManifest -PathType Leaf)) { throw "Windows manifest missing: $windowsManifest" }
 & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $verifier -ManifestPath $windowsManifest
 if ($LASTEXITCODE -ne 0) { throw 'Windows manifest verification failed' }
-foreach ($path in @('ReduceMemory.exe','ReduceMemory_x64.exe','ReduceMemoryWorker.exe','ReduceMemoryWorker_x64.exe')) {
+foreach ($path in @('ByteSweep.exe','ByteSweep_x64.exe','ByteSweepWorker.exe','ByteSweepWorker_x64.exe')) {
     if (-not (Test-Path -LiteralPath (Join-Path $WindowsStaging $path) -PathType Leaf)) { throw "Windows package input missing: $path" }
 }
-foreach ($path in @('ReduceMemory_Linux.sh','native\reduce-memory-native','desktop\Install_Desktop.sh','server\Install_Server.sh')) {
+foreach ($path in @('ByteSweep_Linux.sh','native\bytesweep-native','desktop\Install_Desktop.sh','server\Install_Server.sh')) {
     if (-not (Test-Path -LiteralPath (Join-Path $LinuxRoot $path) -PathType Leaf)) { throw "Linux package input missing: $path" }
 }
-$root = Join-Path $OutputDirectory ("ReduceMemory-$Version")
+$root = Join-Path $OutputDirectory ("ByteSweep-$Version")
 if (Test-Path -LiteralPath $root) {
     $resolvedRoot = [IO.Path]::GetFullPath($root)
     $resolvedOutput = [IO.Path]::GetFullPath($OutputDirectory)
     if (-not $resolvedRoot.StartsWith($resolvedOutput + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase) -or
-        (Split-Path -Leaf $resolvedRoot) -ne "ReduceMemory-$Version") {
+        (Split-Path -Leaf $resolvedRoot) -ne "ByteSweep-$Version") {
         throw "Refusing to clean an unexpected release directory: $resolvedRoot"
     }
     Remove-Item -LiteralPath $resolvedRoot -Recurse -Force
 }
 New-Item -ItemType Directory -Path (Join-Path $root 'windows'),(Join-Path $root 'linux') -Force | Out-Null
-Copy-Item -LiteralPath (Join-Path $WindowsStaging 'ReduceMemory.exe'),(Join-Path $WindowsStaging 'ReduceMemory_x64.exe'),(Join-Path $WindowsStaging 'ReduceMemoryWorker.exe'),(Join-Path $WindowsStaging 'ReduceMemoryWorker_x64.exe') -Destination (Join-Path $root 'windows') -Force
-$config = Join-Path $WindowsStaging 'ReduceMemory.ini'
-if (-not (Test-Path -LiteralPath $config -PathType Leaf)) { $config = Join-Path (Split-Path -Parent $PSScriptRoot) 'windows\ReduceMemory.ini' }
-if (Test-Path -LiteralPath $config -PathType Leaf) { Copy-Item -LiteralPath $config -Destination (Join-Path $root 'windows\ReduceMemory.ini') -Force }
-Copy-Item -LiteralPath (Join-Path $LinuxRoot 'ReduceMemory_Linux.sh'),(Join-Path $LinuxRoot 'native'),(Join-Path $LinuxRoot 'desktop'),(Join-Path $LinuxRoot 'server'),(Join-Path $LinuxRoot 'README.md') -Destination (Join-Path $root 'linux') -Recurse -Force
+Copy-Item -LiteralPath (Join-Path $WindowsStaging 'ByteSweep.exe'),(Join-Path $WindowsStaging 'ByteSweep_x64.exe'),(Join-Path $WindowsStaging 'ByteSweepWorker.exe'),(Join-Path $WindowsStaging 'ByteSweepWorker_x64.exe') -Destination (Join-Path $root 'windows') -Force
+$config = Join-Path $WindowsStaging 'ByteSweep.ini'
+if (-not (Test-Path -LiteralPath $config -PathType Leaf)) { $config = Join-Path (Split-Path -Parent $PSScriptRoot) 'windows\ByteSweep.ini' }
+if (Test-Path -LiteralPath $config -PathType Leaf) { Copy-Item -LiteralPath $config -Destination (Join-Path $root 'windows\ByteSweep.ini') -Force }
+Copy-Item -LiteralPath (Join-Path $LinuxRoot 'ByteSweep_Linux.sh'),(Join-Path $LinuxRoot 'native'),(Join-Path $LinuxRoot 'desktop'),(Join-Path $LinuxRoot 'server'),(Join-Path $LinuxRoot 'README.md') -Destination (Join-Path $root 'linux') -Recurse -Force
 Copy-Item -LiteralPath $windowsManifest -Destination (Join-Path $root 'windows\BUILD-MANIFEST.json') -Force
 # Source checkouts can contain interpreter caches from local validation. They
 # are not release payload and must never enter the manifest or ZIP.
@@ -71,12 +71,12 @@ $sourceCommit = (& git -C $repositoryRoot rev-parse HEAD 2>$null).Trim()
 $sourceDirty = @(& git -C $repositoryRoot status --porcelain).Count -gt 0
 $releaseFiles = $files | ForEach-Object {
     $relative = $_.FullName.Substring($root.Length + 1)
-    $architecture = if ($relative -match 'ReduceMemory(?:Worker)?_x64\.exe$') { 'x86_64' } elseif ($relative -match '\.exe$') { 'x86' } else { 'any' }
+    $architecture = if ($relative -match 'ByteSweep(?:Worker)?_x64\.exe$') { 'x86_64' } elseif ($relative -match '\.exe$') { 'x86' } else { 'any' }
     [ordered]@{ file = $relative; bytes = $_.Length; sha256 = (Get-Sha256Hex $_.FullName); architecture = $architecture }
 }
 [ordered]@{ schemaVersion = 1; version = $Version; sourceCommit = $sourceCommit; sourceDirty = $sourceDirty; windowsManifest = (Get-Content -LiteralPath (Join-Path $root 'windows\BUILD-MANIFEST.json') -Raw | ConvertFrom-Json); files = $releaseFiles } |
     ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $root 'RELEASE-MANIFEST.json') -Encoding UTF8
-$zip = Join-Path $OutputDirectory ("ReduceMemory-$Version.zip")
+$zip = Join-Path $OutputDirectory ("ByteSweep-$Version.zip")
 Compress-Archive -LiteralPath $root -DestinationPath $zip -Force
 Write-Output ("SHA256 {0}  {1}" -f (Get-Sha256Hex $zip), $zip)
 Write-Output "Release package created: $zip"
