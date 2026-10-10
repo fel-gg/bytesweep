@@ -4,7 +4,7 @@ import unittest
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-SOURCE = ROOT / "src" / "ReduceMemory.au3"
+SOURCE = ROOT / "src" / "ByteSweep.au3"
 
 
 class SourceContractTests(unittest.TestCase):

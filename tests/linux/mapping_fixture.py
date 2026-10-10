@@ -54,7 +54,7 @@ def main() -> int:
     size = 32 * 1024 * 1024
     mappings: list[mmap.mmap] = []
     files: list[object] = []
-    owned_dir = tempfile.TemporaryDirectory(prefix="reduce-memory-mapping-")
+    owned_dir = tempfile.TemporaryDirectory(prefix="bytesweep-mapping-")
     try:
         if args.case == "many-small":
             for _ in range(128):

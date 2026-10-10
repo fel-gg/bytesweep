@@ -9,7 +9,7 @@ function Get-Sha256Hex([string] $Path) {
     } finally { $sha.Dispose() }
 }
 if (-not (Test-Path -LiteralPath $PackagePath -PathType Leaf)) { throw "Package missing: $PackagePath" }
-$root = Join-Path ([IO.Path]::GetTempPath()) ('ReduceMemory-package-verify-' + [guid]::NewGuid().ToString('N'))
+$root = Join-Path ([IO.Path]::GetTempPath()) ('ByteSweep-package-verify-' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $root | Out-Null
 try {
     Expand-Archive -LiteralPath $PackagePath -DestinationPath $root -Force

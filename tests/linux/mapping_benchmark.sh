@@ -10,7 +10,7 @@ case_seconds="${MAPPING_SECONDS:-3}"
 script_directory="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 repository_root="$(cd -- "${script_directory}/../.." && pwd)"
 fixture="${script_directory}/mapping_fixture.py"
-native="${repository_root}/linux/native/reduce-memory-native"
+native="${repository_root}/linux/native/bytesweep-native"
 mkdir -p -- "$(dirname -- "${output_path}")"
 if [[ ! "${repeat_count}" =~ ^[1-9][0-9]*$ || "${repeat_count}" -gt 10 ]]; then
   printf 'MAPPING_REPEATS must be an integer in 1..10\n' >&2
@@ -18,7 +18,7 @@ if [[ ! "${repeat_count}" =~ ^[1-9][0-9]*$ || "${repeat_count}" -gt 10 ]]; then
 fi
 
 cases=(anonymous-private anonymous-with-swap anonymous-without-swap clean-file dirty-file shared-file mixed-cow thp sparse-file many-small)
-tmp_root="$(mktemp -d "${TMPDIR:-/tmp}/reduce-memory-mapping-grid.XXXXXX")"
+tmp_root="$(mktemp -d "${TMPDIR:-/tmp}/bytesweep-mapping-grid.XXXXXX")"
 active_pid=""
 cleanup() {
   if [[ -n "${active_pid}" ]] && kill -0 "${active_pid}" 2>/dev/null; then

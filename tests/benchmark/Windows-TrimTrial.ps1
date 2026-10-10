@@ -20,7 +20,7 @@ if ($Megabytes -lt 128 -or $Megabytes -gt 512) {
     throw 'Megabytes must remain in the bounded 128..512 fixture range'
 }
 
-$fixtureRoot = Join-Path ([IO.Path]::GetTempPath()) ('ReduceMemory-benchmark-trial-' + [guid]::NewGuid().ToString('N'))
+$fixtureRoot = Join-Path ([IO.Path]::GetTempPath()) ('ByteSweep-benchmark-trial-' + [guid]::NewGuid().ToString('N'))
 $resultPath = Join-Path $fixtureRoot 'trim.result'
 $target = $null
 

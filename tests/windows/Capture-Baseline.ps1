@@ -100,20 +100,20 @@ $baseline = [ordered]@{
         commit = $sourceCommit.ToLowerInvariant()
         dirty = $worktreeState.Count -gt 0
         files = @(
-            Get-FileRecord 'src\ReduceMemory.au3'
-            Get-FileRecord 'windows\native\reduce_memory_worker.c'
-            Get-FileRecord 'linux\ReduceMemory_Linux.sh'
-            Get-FileRecord 'linux\native\reduce-memory-native'
+            Get-FileRecord 'src\ByteSweep.au3'
+            Get-FileRecord 'windows\native\bytesweep_worker.c'
+            Get-FileRecord 'linux\ByteSweep_Linux.sh'
+            Get-FileRecord 'linux\native\bytesweep-native'
         )
     }
     storedWindowsArtifacts = @(
-        Get-FileRecord 'windows\ReduceMemory.exe'
-        Get-FileRecord 'windows\ReduceMemory_x64.exe'
-        Get-FileRecord 'windows\ReduceMemoryWorker.exe'
-        Get-FileRecord 'windows\ReduceMemoryWorker_x64.exe'
+        Get-FileRecord 'windows\ByteSweep.exe'
+        Get-FileRecord 'windows\ByteSweep_x64.exe'
+        Get-FileRecord 'windows\ByteSweepWorker.exe'
+        Get-FileRecord 'windows\ByteSweepWorker_x64.exe'
     )
     configuration = [ordered]@{
-        record = Get-FileRecord 'windows\ReduceMemory.ini'
+        record = Get-FileRecord 'windows\ByteSweep.ini'
         privateContentCaptured = $false
     }
     toolchain = [ordered]@{

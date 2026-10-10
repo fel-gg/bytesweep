@@ -4,7 +4,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$diagnosticPath = Join-Path $env:TEMP 'ReduceMemory-UiSmoke-error.txt'
+$diagnosticPath = Join-Path $env:TEMP 'ByteSweep-UiSmoke-error.txt'
 trap {
     $message = $_.Exception.Message
     "UI smoke error: $message" | Set-Content -LiteralPath $diagnosticPath -Encoding UTF8
@@ -21,7 +21,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
 
-public static class ReduceMemoryUiNative {
+public static class ByteSweepUiNative {
   public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
   [DllImport("user32.dll")] public static extern bool EnumWindows(EnumWindowsProc cb, IntPtr data);
   [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint pid);
@@ -162,14 +162,14 @@ function Get-FrontendProcessIds {
         return @([int]$launcher.Id)
     }
     try {
-        $ids += @(Get-CimInstance Win32_Process -Filter "Name='ReduceMemory.exe' OR Name='ReduceMemory_x64.exe'" | Where-Object {
+        $ids += @(Get-CimInstance Win32_Process -Filter "Name='ByteSweep.exe' OR Name='ByteSweep_x64.exe'" | Where-Object {
         if (-not $_.ExecutablePath) { return $false }
         $candidatePath = [IO.Path]::GetFullPath($_.ExecutablePath)
         $candidateDirectory = [IO.Path]::GetDirectoryName($candidatePath)
         $candidateName = [IO.Path]::GetFileName($candidatePath)
         $sameDirectory = $candidateDirectory.Equals($stagingDirectory, [StringComparison]::OrdinalIgnoreCase)
-        $frontendName = $candidateName.Equals('ReduceMemory.exe', [StringComparison]::OrdinalIgnoreCase) -or
-            $candidateName.Equals('ReduceMemory_x64.exe', [StringComparison]::OrdinalIgnoreCase)
+        $frontendName = $candidateName.Equals('ByteSweep.exe', [StringComparison]::OrdinalIgnoreCase) -or
+            $candidateName.Equals('ByteSweep_x64.exe', [StringComparison]::OrdinalIgnoreCase)
         $sameDirectory -and $frontendName
     } | ForEach-Object {
         [int]$_.ProcessId
@@ -191,15 +191,15 @@ try {
         # launcher process exits. Discover the visible owner by exact image
         # path, not only by the short-lived Start-Process PID.
         foreach ($frontendPid in (Get-FrontendProcessIds | Select-Object -Unique)) {
-            foreach ($candidate in [ReduceMemoryUiNative]::WindowsForProcess($frontendPid)) {
-                $title = [ReduceMemoryUiNative]::Title($candidate)
-                if ($title -like 'Reduce Memory*') { $window = $candidate; break }
+            foreach ($candidate in [ByteSweepUiNative]::WindowsForProcess($frontendPid)) {
+                $title = [ByteSweepUiNative]::Title($candidate)
+                if ($title -like 'ByteSweep*') { $window = $candidate; break }
             }
             if ($window -ne [IntPtr]::Zero) { break }
         }
         if ($window -eq [IntPtr]::Zero) { Start-Sleep -Milliseconds 100 }
     } while ($window -eq [IntPtr]::Zero -and [DateTime]::UtcNow -lt $deadline)
-    if ($window -eq [IntPtr]::Zero) { throw 'Reduce Memory main window did not appear' }
+    if ($window -eq [IntPtr]::Zero) { throw 'ByteSweep main window did not appear' }
     # The title can be published a few hundred milliseconds before AutoIt
     # finishes populating the six mode entries. Wait for the semantic control,
     # not just the top-level window, so cold interactive runners are stable.
@@ -207,10 +207,10 @@ try {
     $combo = [IntPtr]::Zero
     $count = 0
     do {
-        $combo = [ReduceMemoryUiNative]::FindCombo($window)
+        $combo = [ByteSweepUiNative]::FindCombo($window)
     if ($combo -ne [IntPtr]::Zero) {
-            [ReduceMemoryUiNative]::SendMessage($combo, [ReduceMemoryUiNative]::CB_SHOWDROPDOWN, [IntPtr]::new(1), [IntPtr]::Zero) | Out-Null
-            $count = [ReduceMemoryUiNative]::ComboCount($combo)
+            [ByteSweepUiNative]::SendMessage($combo, [ByteSweepUiNative]::CB_SHOWDROPDOWN, [IntPtr]::new(1), [IntPtr]::Zero) | Out-Null
+            $count = [ByteSweepUiNative]::ComboCount($combo)
         }
         if ($count -ne 6 -and $combo -ne [IntPtr]::Zero) {
             $uia = Get-UiAutomationCombo -WindowHandle $window
@@ -221,10 +221,10 @@ try {
         if ($count -ne 6) { Start-Sleep -Milliseconds 100 }
     } while ($count -ne 6 -and [DateTime]::UtcNow -lt $comboDeadline)
     if ($combo -eq [IntPtr]::Zero) { throw 'Optimize mode ComboBox was not found' }
-    if ($count -ne 6) { throw "Optimize mode ComboBox has $count items instead of 6; children=$([ReduceMemoryUiNative]::ChildSummary($window))" }
+    if ($count -ne 6) { throw "Optimize mode ComboBox has $count items instead of 6; children=$([ByteSweepUiNative]::ChildSummary($window))" }
     $uia = if ($count -eq 6 -and $null -eq $uia) { Get-UiAutomationCombo -WindowHandle $window } else { $uia }
     $labels = if ($null -ne $uia -and $uia.Names.Count -eq 6) { $uia.Names } else {
-        for ($i = 0; $i -lt $count; $i++) { [ReduceMemoryUiNative]::ComboText($combo, $i) }
+        for ($i = 0; $i -lt $count; $i++) { [ByteSweepUiNative]::ComboText($combo, $i) }
     }
     $expected = @('Normal Optimize','AI Shield','Aggressive Release','Aggressive Smooth','Aggressive + Delete Temp','Emergency Release')
     for ($i = 0; $i -lt $expected.Count; $i++) {
@@ -233,15 +233,15 @@ try {
     # Exercise the actual selection callback, not just the visible labels.
     # The callback persists Main/OptimizeMode next to the portable frontend;
     # verify every ComboBox index maps to the documented engine mode.
-    $iniPath = Join-Path (Split-Path -Parent $resolved) 'ReduceMemory.ini'
+    $iniPath = Join-Path (Split-Path -Parent $resolved) 'ByteSweep.ini'
     $expectedModes = @(0, 5, 1, 2, 3, 4)
     for ($i = 0; $i -lt $expectedModes.Count; $i++) {
         # Drive the real ComboBox through focus/keyboard input so AutoIt's
         # GUIOnEvent callback receives the same user-facing selection path.
-        [ReduceMemoryUiNative]::SelectComboIndexWithKeyboard($combo, $i)
+        [ByteSweepUiNative]::SelectComboIndexWithKeyboard($combo, $i)
         # Keep the native notification as a deterministic fallback for
         # themed controls that update the visual item without CBN_SELCHANGE.
-        [ReduceMemoryUiNative]::NotifyComboSelection($combo)
+        [ByteSweepUiNative]::NotifyComboSelection($combo)
         Start-Sleep -Milliseconds 100
         if (-not (Test-Path -LiteralPath $iniPath -PathType Leaf)) { throw 'Mode callback did not preserve the portable INI' }
         $iniText = Get-Content -LiteralPath $iniPath -Raw -Encoding Unicode
@@ -253,8 +253,8 @@ try {
 }
 finally {
     foreach ($frontendPid in (Get-FrontendProcessIds | Select-Object -Unique)) {
-        foreach ($candidate in [ReduceMemoryUiNative]::WindowsForProcess($frontendPid)) {
-            [ReduceMemoryUiNative]::PostMessage($candidate, [ReduceMemoryUiNative]::WM_CLOSE, [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null
+        foreach ($candidate in [ByteSweepUiNative]::WindowsForProcess($frontendPid)) {
+            [ByteSweepUiNative]::PostMessage($candidate, [ByteSweepUiNative]::WM_CLOSE, [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null
         }
     }
     Start-Sleep -Milliseconds 250

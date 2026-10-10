@@ -18,10 +18,10 @@ class ReleaseWorkflowContractTests(unittest.TestCase):
 
     def test_release_does_not_archive_tracked_windows_executables(self):
         text = WORKFLOW.read_text(encoding="utf-8")
-        self.assertNotIn("windows/ReduceMemory_x64.exe \\", text)
-        self.assertNotIn("windows/ReduceMemory.exe \\", text)
-        self.assertNotIn("windows/ReduceMemoryWorker_x64.exe \\", text)
-        self.assertNotIn("windows/ReduceMemoryWorker.exe \\", text)
+        self.assertNotIn("windows/ByteSweep_x64.exe \\", text)
+        self.assertNotIn("windows/ByteSweep.exe \\", text)
+        self.assertNotIn("windows/ByteSweepWorker_x64.exe \\", text)
+        self.assertNotIn("windows/ByteSweepWorker.exe \\", text)
 
     def test_release_has_bounded_jobs_and_toolchain_downloads(self):
         text = WORKFLOW.read_text(encoding="utf-8")

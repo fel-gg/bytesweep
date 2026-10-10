@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Native Linux process page-out helper for Reduce Memory.
+"""Native Linux process page-out helper for ByteSweep.
 
 Uses pidfd_open(2) and process_madvise(2) with MADV_PAGEOUT. The helper never
 kills a process and never changes the contents or layout of a mapping.
@@ -1370,7 +1370,7 @@ def build_parser() -> argparse.ArgumentParser:
             setattr(namespace, marker, True)
 
     parser = argparse.ArgumentParser(
-        description="Reduce Memory native Linux process page-out helper",
+        description="ByteSweep native Linux process page-out helper",
         allow_abbrev=False,
     )
     subparsers = parser.add_subparsers(dest="command", required=True)

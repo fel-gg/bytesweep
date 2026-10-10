@@ -16,7 +16,7 @@ try {
     do {
         if ($parent.HasExited) { throw "Lifecycle parent exited before parent-death probe: $($parent.ExitCode)" }
         $children = @(Get-CimInstance Win32_Process -Filter "ParentProcessId=$($parent.Id)" |
-            Where-Object { $_.Name -like 'ReduceMemoryWorker*.exe' } | ForEach-Object ProcessId)
+            Where-Object { $_.Name -like 'ByteSweepWorker*.exe' } | ForEach-Object ProcessId)
         if ($children.Count -gt 0) { break }
         Start-Sleep -Milliseconds 50
     } while ([DateTime]::UtcNow -lt $deadline)

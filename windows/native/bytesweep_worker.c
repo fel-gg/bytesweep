@@ -163,9 +163,9 @@ static int frontend_path(WCHAR *path, DWORD capacity) {
     separator = wcsrchr(path, L'\\');
     if (!separator) return 0;
 #ifdef _WIN64
-    frontend = L"ReduceMemory_x64.exe";
+    frontend = L"ByteSweep_x64.exe";
 #else
-    frontend = L"ReduceMemory.exe";
+    frontend = L"ByteSweep.exe";
 #endif
     if ((size_t)(separator - path + 1) + wcslen(frontend) >= capacity) return 0;
     wcscpy_s(separator + 1, capacity - (DWORD)(separator - path + 1), frontend);
@@ -177,14 +177,14 @@ static int launch_frontend(void) {
     HINSTANCE launched;
     if (!frontend_path(path, (DWORD)(sizeof(path) / sizeof(path[0])))) {
         MessageBoxW(NULL,
-                    L"Aplikasi utama tidak ditemukan. Simpan worker ini di folder yang sama dengan ReduceMemory.",
-                    L"ReduceMemory native worker", MB_OK | MB_ICONERROR);
+                    L"Aplikasi utama tidak ditemukan. Simpan worker ini di folder yang sama dengan ByteSweep.",
+                    L"ByteSweep native worker", MB_OK | MB_ICONERROR);
         return 30;
     }
     launched = ShellExecuteW(NULL, L"open", path, NULL, NULL, SW_SHOWNORMAL);
     if ((INT_PTR)launched <= 32) {
         MessageBoxW(NULL, L"Aplikasi utama gagal dibuka.",
-                    L"ReduceMemory native worker", MB_OK | MB_ICONERROR);
+                    L"ByteSweep native worker", MB_OK | MB_ICONERROR);
         return 31;
     }
     return 0;

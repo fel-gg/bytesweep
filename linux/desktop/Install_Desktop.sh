@@ -8,20 +8,20 @@ fi
 
 installer_directory="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 linux_directory="$(cd -- "${installer_directory}/.." && pwd)"
-source_script="${linux_directory}/ReduceMemory_Linux.sh"
-source_native="${linux_directory}/native/reduce-memory-native"
-bin_directory="${REDUCE_MEMORY_BIN_DIR:-${XDG_BIN_HOME:-${HOME}/.local/bin}}"
-application_directory="${REDUCE_MEMORY_APP_DIR:-${XDG_DATA_HOME:-${HOME}/.local/share}/applications}"
-installed_script="${bin_directory}/reduce-memory"
-installed_native="${bin_directory}/reduce-memory-native"
-desktop_file="${application_directory}/reduce-memory.desktop"
+source_script="${linux_directory}/ByteSweep_Linux.sh"
+source_native="${linux_directory}/native/bytesweep-native"
+bin_directory="${BYTESWEEP_BIN_DIR:-${XDG_BIN_HOME:-${HOME}/.local/bin}}"
+application_directory="${BYTESWEEP_APP_DIR:-${XDG_DATA_HOME:-${HOME}/.local/share}/applications}"
+installed_script="${bin_directory}/bytesweep"
+installed_native="${bin_directory}/bytesweep-native"
+desktop_file="${application_directory}/bytesweep.desktop"
 
 if [[ "${1:-}" == "uninstall" ]]; then
   rm -f -- "${installed_script}" "${installed_native}" "${desktop_file}"
   if command -v update-desktop-database >/dev/null 2>&1; then
     update-desktop-database "${application_directory}" >/dev/null 2>&1 || true
   fi
-  printf '%s\n' 'Reduce Memory Linux Desktop berhasil dihapus dari prefix yang dipilih.'
+  printf '%s\n' 'ByteSweep Linux Desktop berhasil dihapus dari prefix yang dipilih.'
   exit 0
 fi
 
@@ -47,7 +47,7 @@ cat > "${desktop_file}" <<EOF
 [Desktop Entry]
 Type=Application
 Version=1.0
-Name=Reduce Memory
+Name=ByteSweep
 Comment=Native Linux application page-out and cache reclaim
 Exec="${escaped_exec}" --menu
 Icon=utilities-system-monitor
@@ -63,7 +63,7 @@ if command -v update-desktop-database >/dev/null 2>&1; then
   update-desktop-database "${application_directory}" >/dev/null 2>&1 || true
 fi
 
-printf '%s\n' 'Reduce Memory Linux Desktop berhasil dipasang.'
-printf 'Buka menu aplikasi lalu cari: Reduce Memory\n'
+printf '%s\n' 'ByteSweep Linux Desktop berhasil dipasang.'
+printf 'Buka menu aplikasi lalu cari: ByteSweep\n'
 printf 'Command terminal juga tersedia: %s\n' "${installed_script}"
 printf 'Native page-out helper terpasang: %s\n' "${installed_native}"

@@ -17,11 +17,11 @@ $buildScript = Join-Path $repositoryRoot 'windows\build.ps1'
 $baselineScript = Join-Path $PSScriptRoot 'Capture-Baseline.ps1'
 $ownsOutput = [string]::IsNullOrWhiteSpace($OutputDirectory)
 $outputRoot = if ($ownsOutput) {
-    Join-Path ([System.IO.Path]::GetTempPath()) ('ReduceMemory-build-test-' + [guid]::NewGuid().ToString('N'))
+    Join-Path ([System.IO.Path]::GetTempPath()) ('ByteSweep-build-test-' + [guid]::NewGuid().ToString('N'))
 } else {
     $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($OutputDirectory)
 }
-$sourceCheckRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('ReduceMemory-source-test-' + [guid]::NewGuid().ToString('N'))
+$sourceCheckRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('ByteSweep-source-test-' + [guid]::NewGuid().ToString('N'))
 
 function Remove-OwnedTemporaryDirectory {
     param(
@@ -96,8 +96,8 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "Baseline capture returned exit code $LASTEXITCODE" }
 
     New-Item -ItemType Directory -Path $sourceCheckRoot -Force | Out-Null
-    $sourceCopy = Join-Path $sourceCheckRoot 'ReduceMemory.au3'
-    Copy-Item -LiteralPath (Join-Path $repositoryRoot 'src\ReduceMemory.au3') -Destination $sourceCopy
+    $sourceCopy = Join-Path $sourceCheckRoot 'ByteSweep.au3'
+    Copy-Item -LiteralPath (Join-Path $repositoryRoot 'src\ByteSweep.au3') -Destination $sourceCopy
     foreach ($interpreter in @('AutoIt3.exe', 'AutoIt3_x64.exe')) {
         $interpreterPath = Join-Path $AutoItRoot $interpreter
         if (-not (Test-Path -LiteralPath $interpreterPath -PathType Leaf)) {
@@ -116,10 +116,10 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "Build returned exit code $LASTEXITCODE" }
 
     $expectedFiles = @(
-        'ReduceMemory.exe',
-        'ReduceMemory_x64.exe',
-        'ReduceMemoryWorker.exe',
-        'ReduceMemoryWorker_x64.exe',
+        'ByteSweep.exe',
+        'ByteSweep_x64.exe',
+        'ByteSweepWorker.exe',
+        'ByteSweepWorker_x64.exe',
         'BUILD-MANIFEST.json',
         'M0-BASELINE.json'
     )
@@ -136,7 +136,7 @@ try {
 
     $manifest = Get-Content -LiteralPath (Join-Path $outputRoot 'BUILD-MANIFEST.json') -Raw | ConvertFrom-Json
     if ($manifest.schemaVersion -ne 1) { throw 'Unexpected build manifest schema' }
-    if ($manifest.projectVersion -ne '4.0') { throw 'The staged build must produce project version 4.0' }
+    if ($manifest.projectVersion -ne '4.1') { throw 'The staged build must produce project version 4.1' }
     if ($manifest.sourceCommit -notmatch '^[0-9a-f]{40}$') { throw 'Manifest source commit is invalid' }
     if ($manifest.sourceSha256 -notmatch '^[A-F0-9]{64}$') { throw 'Manifest source hash is invalid' }
     if ($manifest.buildInputs.Count -lt 7) { throw 'Manifest must describe all compiler and source inputs' }
@@ -176,8 +176,8 @@ try {
     $artifactByName = @{}
     foreach ($artifact in $manifest.artifacts) { $artifactByName[$artifact.file] = $artifact }
     foreach ($pair in @(
-        @{ Frontend = 'ReduceMemory.exe'; Worker = 'ReduceMemoryWorker.exe'; Architecture = 'x86' },
-        @{ Frontend = 'ReduceMemory_x64.exe'; Worker = 'ReduceMemoryWorker_x64.exe'; Architecture = 'x86_64' }
+        @{ Frontend = 'ByteSweep.exe'; Worker = 'ByteSweepWorker.exe'; Architecture = 'x86' },
+        @{ Frontend = 'ByteSweep_x64.exe'; Worker = 'ByteSweepWorker_x64.exe'; Architecture = 'x86_64' }
     )) {
         if (-not $artifactByName.ContainsKey($pair.Frontend) -or -not $artifactByName.ContainsKey($pair.Worker)) {
             throw "Manifest is missing the frontend/worker pair for $($pair.Architecture)"
@@ -189,7 +189,7 @@ try {
     }
 
     if (-not $SkipFrontendExecution) {
-        foreach ($frontend in @('ReduceMemory.exe', 'ReduceMemory_x64.exe')) {
+        foreach ($frontend in @('ByteSweep.exe', 'ByteSweep_x64.exe')) {
             foreach ($selfTest in @('/RMSELFTEST', '/RMMONITORSELFTEST', '/RMMEASUREMENTSELFTEST', '/RMWIRESELFTEST', '/RMPLANSELFTEST', '/RMWORKERLIFECYCLESELFTEST')) {
                 $frontendPath = Join-Path $outputRoot $frontend
                 if (-not (Test-Path -LiteralPath $frontendPath -PathType Leaf)) {
@@ -212,7 +212,7 @@ try {
         Write-Warning 'Compiled frontend execution was skipped. Source checks, compilation, manifest validation, and worker tests continue; compiled frontend runtime behavior remains unverified.'
     }
 
-    foreach ($worker in @('ReduceMemoryWorker.exe', 'ReduceMemoryWorker_x64.exe')) {
+    foreach ($worker in @('ByteSweepWorker.exe', 'ByteSweepWorker_x64.exe')) {
         foreach ($selfTest in @('/selftest', '/selection-selftest', '/measurement-selftest')) {
             $processExit = Invoke-BoundedProcess -FilePath (Join-Path $outputRoot $worker) -Arguments @($selfTest)
             if ($processExit -ne 0) { throw "$worker $selfTest failed with $processExit" }
@@ -222,6 +222,6 @@ try {
     Write-Output "Windows staged build contract passed: $outputRoot"
 }
 finally {
-    if ($ownsOutput) { Remove-OwnedTemporaryDirectory -Path $outputRoot -ExpectedPrefix 'ReduceMemory-build-test-' }
-    Remove-OwnedTemporaryDirectory -Path $sourceCheckRoot -ExpectedPrefix 'ReduceMemory-source-test-'
+    if ($ownsOutput) { Remove-OwnedTemporaryDirectory -Path $outputRoot -ExpectedPrefix 'ByteSweep-build-test-' }
+    Remove-OwnedTemporaryDirectory -Path $sourceCheckRoot -ExpectedPrefix 'ByteSweep-source-test-'
 }

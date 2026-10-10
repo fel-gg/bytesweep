@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ "${REDUCE_MEMORY_TEST_MODE:-0}" == "1" ]]; then
+if [[ "${BYTESWEEP_TEST_MODE:-0}" == "1" ]]; then
   required_test_variables=(
-    REDUCE_MEMORY_TEST_ROOT
-    REDUCE_MEMORY_MEMINFO_FILE
-    REDUCE_MEMORY_VM_ROOT
-    REDUCE_MEMORY_TARGET_CGROUP
-    REDUCE_MEMORY_NATIVE_HELPER
-    REDUCE_MEMORY_SYNC_COMMAND
-    REDUCE_MEMORY_TEST_EFFECTIVE_UID
+    BYTESWEEP_TEST_ROOT
+    BYTESWEEP_MEMINFO_FILE
+    BYTESWEEP_VM_ROOT
+    BYTESWEEP_TARGET_CGROUP
+    BYTESWEEP_NATIVE_HELPER
+    BYTESWEEP_SYNC_COMMAND
+    BYTESWEEP_TEST_EFFECTIVE_UID
   )
   for variable_name in "${required_test_variables[@]}"; do
     if [[ -z "${!variable_name:-}" ]]; then
@@ -18,26 +18,26 @@ if [[ "${REDUCE_MEMORY_TEST_MODE:-0}" == "1" ]]; then
     fi
   done
 
-  test_root="$(readlink -m -- "${REDUCE_MEMORY_TEST_ROOT}")"
+  test_root="$(readlink -m -- "${BYTESWEEP_TEST_ROOT}")"
   case "${test_root}" in
     /|/proc|/proc/*|/sys|/sys/*)
-      echo "Test mode ditolak: REDUCE_MEMORY_TEST_ROOT harus berupa direktori fixture terisolasi." >&2
+      echo "Test mode ditolak: BYTESWEEP_TEST_ROOT harus berupa direktori fixture terisolasi." >&2
       exit 2
       ;;
   esac
   fixture_path_variables=(
-    REDUCE_MEMORY_MEMINFO_FILE
-    REDUCE_MEMORY_VM_ROOT
-    REDUCE_MEMORY_TARGET_CGROUP
-    REDUCE_MEMORY_NATIVE_HELPER
-    REDUCE_MEMORY_SYNC_COMMAND
+    BYTESWEEP_MEMINFO_FILE
+    BYTESWEEP_VM_ROOT
+    BYTESWEEP_TARGET_CGROUP
+    BYTESWEEP_NATIVE_HELPER
+    BYTESWEEP_SYNC_COMMAND
   )
   for variable_name in "${fixture_path_variables[@]}"; do
     fixture_path="$(readlink -m -- "${!variable_name}")"
     case "${fixture_path}" in
       "${test_root}"/*) ;;
       *)
-        echo "Test mode ditolak: ${variable_name} berada di luar REDUCE_MEMORY_TEST_ROOT." >&2
+        echo "Test mode ditolak: ${variable_name} berada di luar BYTESWEEP_TEST_ROOT." >&2
         exit 2
         ;;
     esac
@@ -46,34 +46,34 @@ fi
 
 script_path="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || printf '%s' "${BASH_SOURCE[0]}")"
 script_directory="$(cd -- "$(dirname -- "${script_path}")" && pwd)"
-  program_title="Reduce Memory 4.0 - Linux"
+  program_title="ByteSweep 4.1 - Linux"
 server_mode=0
-if [[ "${script_path##*/}" == "reduce-memory-server" ]]; then
-  program_title="Reduce Memory 4.0 - Linux Server"
+if [[ "${script_path##*/}" == "bytesweep-server" ]]; then
+  program_title="ByteSweep 4.1 - Linux Server"
   server_mode=1
 fi
 
 # Alternate roots let CI execute the real reclaim paths against disposable
 # files instead of changing the runner host.
-proc_root="${REDUCE_MEMORY_PROC_ROOT:-/proc}"
-meminfo_file="${REDUCE_MEMORY_MEMINFO_FILE:-${proc_root}/meminfo}"
-vm_root="${REDUCE_MEMORY_VM_ROOT:-${proc_root}/sys/vm}"
-sync_command="${REDUCE_MEMORY_SYNC_COMMAND:-sync}"
+proc_root="${BYTESWEEP_PROC_ROOT:-/proc}"
+meminfo_file="${BYTESWEEP_MEMINFO_FILE:-${proc_root}/meminfo}"
+vm_root="${BYTESWEEP_VM_ROOT:-${proc_root}/sys/vm}"
+sync_command="${BYTESWEEP_SYNC_COMMAND:-sync}"
 effective_uid="${EUID}"
-if [[ "${REDUCE_MEMORY_TEST_MODE:-0}" == "1" ]]; then
-  effective_uid="${REDUCE_MEMORY_TEST_EFFECTIVE_UID}"
+if [[ "${BYTESWEEP_TEST_MODE:-0}" == "1" ]]; then
+  effective_uid="${BYTESWEEP_TEST_EFFECTIVE_UID}"
   if [[ ! "${effective_uid}" =~ ^[0-9]+$ ]]; then
-    echo "Test mode ditolak: REDUCE_MEMORY_TEST_EFFECTIVE_UID harus berupa angka." >&2
+    echo "Test mode ditolak: BYTESWEEP_TEST_EFFECTIVE_UID harus berupa angka." >&2
     exit 2
   fi
 fi
-settle_seconds="${REDUCE_MEMORY_SETTLE_SECONDS:-1}"
-aggressive_stabilize_seconds="${REDUCE_MEMORY_AGGRESSIVE_STABILIZE_SECONDS:-3}"
-aggressive_rebound_min_mb="${REDUCE_MEMORY_AGGRESSIVE_REBOUND_MIN_MB:-64}"
-aggressive_rebound_percent="${REDUCE_MEMORY_AGGRESSIVE_REBOUND_PERCENT:-20}"
-protected_pid="${REDUCE_MEMORY_PROTECT_PID:-}"
+settle_seconds="${BYTESWEEP_SETTLE_SECONDS:-1}"
+aggressive_stabilize_seconds="${BYTESWEEP_AGGRESSIVE_STABILIZE_SECONDS:-3}"
+aggressive_rebound_min_mb="${BYTESWEEP_AGGRESSIVE_REBOUND_MIN_MB:-64}"
+aggressive_rebound_percent="${BYTESWEEP_AGGRESSIVE_REBOUND_PERCENT:-20}"
+protected_pid="${BYTESWEEP_PROTECT_PID:-}"
 default_ai_patterns="ollama|vllm|llama-server|llama.cpp|text-generation|tritonserver|torchrun|stable-diffusion|comfyui|automatic1111|invokeai|localai|koboldcpp|open-webui"
-ai_patterns="${REDUCE_MEMORY_AI_PATTERNS:-${default_ai_patterns}}"
+ai_patterns="${BYTESWEEP_AI_PATTERNS:-${default_ai_patterns}}"
 declare -A native_rss_before_by_pid=()
 declare -A native_rss_after_by_pid=()
 declare -A native_rss_status_by_pid=()
@@ -83,22 +83,22 @@ optimization_lock_fd=""
 optimization_lock_path=""
 optimization_lock_dir=""
 
-kernel_name="${REDUCE_MEMORY_KERNEL_NAME:-$(uname -s)}"
+kernel_name="${BYTESWEEP_KERNEL_NAME:-$(uname -s)}"
 if [[ "${kernel_name}" != "Linux" ]]; then
   echo "Script ini membutuhkan kernel Linux asli atau WSL2, bukan Git Bash/MSYS." >&2
   exit 3
 fi
 
 acquire_optimization_lock() {
-  local scope="${REDUCE_MEMORY_LOCK_SCOPE:-${SUDO_UID:-${EUID}}}"
-  local lock_root="${REDUCE_MEMORY_LOCK_ROOT:-${XDG_RUNTIME_DIR:-/tmp}}"
+  local scope="${BYTESWEEP_LOCK_SCOPE:-${SUDO_UID:-${EUID}}}"
+  local lock_root="${BYTESWEEP_LOCK_ROOT:-${XDG_RUNTIME_DIR:-/tmp}}"
   [[ "${scope}" =~ ^[0-9]+$ ]] || scope="unknown"
   [[ "${lock_root}" == /tmp || "${lock_root}" == /tmp/* || "${lock_root}" == /run/user/* ]] || {
     echo "Lock root ditolak: ${lock_root}" >&2
     return 2
   }
   mkdir -p -- "${lock_root}" 2>/dev/null || return 2
-  optimization_lock_path="${lock_root%/}/reduce-memory-${scope}.lock"
+  optimization_lock_path="${lock_root%/}/bytesweep-${scope}.lock"
   umask 077
   eval "exec {optimization_lock_fd}>\"${optimization_lock_path}\"" || return 2
   if command -v flock >/dev/null 2>&1; then
@@ -161,19 +161,19 @@ for required_command in awk sync; do
 done
 
 if [[ ! "${settle_seconds}" =~ ^[0-9]+$ ]]; then
-  echo "REDUCE_MEMORY_SETTLE_SECONDS harus berupa angka bulat positif atau nol." >&2
+  echo "BYTESWEEP_SETTLE_SECONDS harus berupa angka bulat positif atau nol." >&2
   exit 2
 fi
 if [[ ! "${aggressive_stabilize_seconds}" =~ ^[0-9]+$ ]] || (( aggressive_stabilize_seconds < 1 || aggressive_stabilize_seconds > 15 )); then
-  echo "REDUCE_MEMORY_AGGRESSIVE_STABILIZE_SECONDS harus berupa angka 1-15." >&2
+  echo "BYTESWEEP_AGGRESSIVE_STABILIZE_SECONDS harus berupa angka 1-15." >&2
   exit 2
 fi
 if [[ ! "${aggressive_rebound_min_mb}" =~ ^[0-9]+$ ]] || (( aggressive_rebound_min_mb < 16 || aggressive_rebound_min_mb > 2048 )); then
-  echo "REDUCE_MEMORY_AGGRESSIVE_REBOUND_MIN_MB harus berupa angka 16-2048." >&2
+  echo "BYTESWEEP_AGGRESSIVE_REBOUND_MIN_MB harus berupa angka 16-2048." >&2
   exit 2
 fi
 if [[ ! "${aggressive_rebound_percent}" =~ ^[0-9]+$ ]] || (( aggressive_rebound_percent < 5 || aggressive_rebound_percent > 80 )); then
-  echo "REDUCE_MEMORY_AGGRESSIVE_REBOUND_PERCENT harus berupa angka 5-80." >&2
+  echo "BYTESWEEP_AGGRESSIVE_REBOUND_PERCENT harus berupa angka 5-80." >&2
   exit 2
 fi
 
@@ -227,7 +227,7 @@ optional_cache_kb() {
 }
 
 distribution_name() {
-  local os_release_file="${REDUCE_MEMORY_OS_RELEASE_FILE:-/etc/os-release}"
+  local os_release_file="${BYTESWEEP_OS_RELEASE_FILE:-/etc/os-release}"
   local pretty_name="Linux"
   if [[ -r "${os_release_file}" ]]; then
     pretty_name="$(awk -F= '$1 == "PRETTY_NAME" { value=substr($0, index($0, "=") + 1); gsub(/^"|"$/, "", value); print value; exit }' "${os_release_file}")"
@@ -259,8 +259,8 @@ require_drop_caches() {
 
 detect_cgroup2_root() {
   local detected_root=""
-  if [[ -n "${REDUCE_MEMORY_CGROUP_ROOT:-}" ]]; then
-    printf '%s\n' "${REDUCE_MEMORY_CGROUP_ROOT%/}"
+  if [[ -n "${BYTESWEEP_CGROUP_ROOT:-}" ]]; then
+    printf '%s\n' "${BYTESWEEP_CGROUP_ROOT%/}"
     return 0
   fi
 
@@ -290,8 +290,8 @@ valid_reclaim_scope() {
   normalized_candidate="$(readlink -m -- "${candidate}")"
   normalized_parent="$(readlink -m -- "${parent}")"
   [[ "${normalized_candidate}" == "${candidate}" && "${normalized_parent}" == "${parent}" ]] || return 1
-  if [[ "${REDUCE_MEMORY_TEST_MODE:-0}" == "1" ]]; then
-    allowed_root="$(readlink -m -- "${REDUCE_MEMORY_TEST_ROOT}")"
+  if [[ "${BYTESWEEP_TEST_MODE:-0}" == "1" ]]; then
+    allowed_root="$(readlink -m -- "${BYTESWEEP_TEST_ROOT}")"
   else
     allowed_root="$(readlink -m -- "$(detect_cgroup2_root 2>/dev/null || printf '%s' /nonexistent)")"
   fi
@@ -303,10 +303,10 @@ find_reclaim_file() {
   local cgroup_root
   local current_path
   local candidate
-  local original_uid="${REDUCE_MEMORY_TARGET_UID:-${SUDO_UID:-}}"
+  local original_uid="${BYTESWEEP_TARGET_UID:-${SUDO_UID:-}}"
 
-  if [[ -n "${REDUCE_MEMORY_TARGET_CGROUP:-}" ]]; then
-    candidate="${REDUCE_MEMORY_TARGET_CGROUP%/}/memory.reclaim"
+  if [[ -n "${BYTESWEEP_TARGET_CGROUP:-}" ]]; then
+    candidate="${BYTESWEEP_TARGET_CGROUP%/}/memory.reclaim"
     valid_reclaim_scope "${candidate}" || return 1
     printf '%s\n' "${candidate}"
     return 0
@@ -369,16 +369,16 @@ bounded_reclaim_mb() {
 
 find_native_helper() {
   local candidate
-  if [[ -n "${REDUCE_MEMORY_NATIVE_HELPER:-}" ]]; then
-    candidate="${REDUCE_MEMORY_NATIVE_HELPER}"
+  if [[ -n "${BYTESWEEP_NATIVE_HELPER:-}" ]]; then
+    candidate="${BYTESWEEP_NATIVE_HELPER}"
     [[ -x "${candidate}" ]] || return 1
     printf '%s\n' "${candidate}"
     return 0
   fi
 
   for candidate in \
-    "${script_directory}/reduce-memory-native" \
-    "${script_directory}/native/reduce-memory-native"; do
+    "${script_directory}/bytesweep-native" \
+    "${script_directory}/native/bytesweep-native"; do
     if [[ -x "${candidate}" ]]; then
       printf '%s\n' "${candidate}"
       return 0
@@ -521,7 +521,7 @@ default_reclaim_mb() {
 }
 
 reclaim_target_mb() {
-  local requested_mb="${REDUCE_MEMORY_RECLAIM_MB:-}"
+  local requested_mb="${BYTESWEEP_RECLAIM_MB:-}"
   local total_mb
   local maximum_mb
 
@@ -531,7 +531,7 @@ reclaim_target_mb() {
   fi
 
   if [[ ! "${requested_mb}" =~ ^[0-9]+$ ]] || (( requested_mb < 64 )); then
-    echo "REDUCE_MEMORY_RECLAIM_MB harus berupa angka bulat minimal 64." >&2
+    echo "BYTESWEEP_RECLAIM_MB harus berupa angka bulat minimal 64." >&2
     return 2
   fi
 
@@ -640,9 +640,9 @@ run_native_pageout() {
   local profile="${1:-default}"
   # A benchmark or supervised caller may provide one explicit target without
   # broadening the scan. Recovery passes still supply the positional PID.
-  local target_pid="${2:-${REDUCE_MEMORY_TARGET_PID:-}}"
+  local target_pid="${2:-${BYTESWEEP_TARGET_PID:-}}"
   local native_helper
-  local target_uid="${REDUCE_MEMORY_TARGET_UID:-${SUDO_UID:-}}"
+  local target_uid="${BYTESWEEP_TARGET_UID:-${SUDO_UID:-}}"
   local native_output=""
   local native_exit=0
   local arguments=(pageout --protocol 2 --session "${optimization_session_id}")
@@ -687,7 +687,7 @@ run_native_pageout() {
   # Normal/Smooth/AI stay on the invoking account unless explicitly expanded.
   if [[ "${target_pid}" =~ ^[1-9][0-9]*$ ]]; then
     arguments+=(--pid "${target_pid}")
-  elif [[ "${REDUCE_MEMORY_ALL_USERS:-0}" == "1" || "${REDUCE_MEMORY_INCLUDE_SERVICE_USERS:-0}" == "1" || "${profile}" == "aggressive" || "${server_mode}" == "1" ]]; then
+  elif [[ "${BYTESWEEP_ALL_USERS:-0}" == "1" || "${BYTESWEEP_INCLUDE_SERVICE_USERS:-0}" == "1" || "${profile}" == "aggressive" || "${server_mode}" == "1" ]]; then
     arguments+=(--all-users)
   elif [[ "${target_uid}" =~ ^[0-9]+$ ]] && (( target_uid > 0 )); then
     arguments+=(--uid "${target_uid}")
@@ -695,42 +695,42 @@ run_native_pageout() {
     stage_native_pageout="skipped; target UID unavailable"
     return 0
   fi
-  if [[ "${server_mode}" == "1" || "${REDUCE_MEMORY_INCLUDE_SERVICE_USERS:-0}" == "1" ]]; then
+  if [[ "${server_mode}" == "1" || "${BYTESWEEP_INCLUDE_SERVICE_USERS:-0}" == "1" ]]; then
     arguments+=(--include-service-users)
   fi
 
   case "${profile}" in
     normal)
-      minimum_rss_mb="${REDUCE_MEMORY_NORMAL_MIN_RSS_MB:-256}"
-      minimum_mapping_kb="${REDUCE_MEMORY_NORMAL_MIN_MAPPING_KB:-4096}"
-      activity_ms="${REDUCE_MEMORY_NORMAL_ACTIVITY_MS:-700}"
-      active_ticks="${REDUCE_MEMORY_NORMAL_ACTIVE_TICKS:-0}"
-      native_settle_ms="${REDUCE_MEMORY_NORMAL_SETTLE_MS:-350}"
+      minimum_rss_mb="${BYTESWEEP_NORMAL_MIN_RSS_MB:-256}"
+      minimum_mapping_kb="${BYTESWEEP_NORMAL_MIN_MAPPING_KB:-4096}"
+      activity_ms="${BYTESWEEP_NORMAL_ACTIVITY_MS:-700}"
+      active_ticks="${BYTESWEEP_NORMAL_ACTIVE_TICKS:-0}"
+      native_settle_ms="${BYTESWEEP_NORMAL_SETTLE_MS:-350}"
       ;;
     smooth)
-      minimum_rss_mb="${REDUCE_MEMORY_SMOOTH_MIN_RSS_MB:-128}"
-      minimum_mapping_kb="${REDUCE_MEMORY_SMOOTH_MIN_MAPPING_KB:-2048}"
-      activity_ms="${REDUCE_MEMORY_SMOOTH_ACTIVITY_MS:-500}"
-      active_ticks="${REDUCE_MEMORY_SMOOTH_ACTIVE_TICKS:-0}"
-      native_settle_ms="${REDUCE_MEMORY_SMOOTH_SETTLE_MS:-500}"
+      minimum_rss_mb="${BYTESWEEP_SMOOTH_MIN_RSS_MB:-128}"
+      minimum_mapping_kb="${BYTESWEEP_SMOOTH_MIN_MAPPING_KB:-2048}"
+      activity_ms="${BYTESWEEP_SMOOTH_ACTIVITY_MS:-500}"
+      active_ticks="${BYTESWEEP_SMOOTH_ACTIVE_TICKS:-0}"
+      native_settle_ms="${BYTESWEEP_SMOOTH_SETTLE_MS:-500}"
       ;;
     aggressive)
-      minimum_rss_mb="${REDUCE_MEMORY_AGGRESSIVE_MIN_RSS_MB:-32}"
-      minimum_mapping_kb="${REDUCE_MEMORY_AGGRESSIVE_MIN_MAPPING_KB:-256}"
-      activity_ms="${REDUCE_MEMORY_AGGRESSIVE_ACTIVITY_MS:-150}"
-      active_ticks="${REDUCE_MEMORY_AGGRESSIVE_ACTIVE_TICKS:-1}"
-      native_settle_ms="${REDUCE_MEMORY_AGGRESSIVE_SETTLE_MS:-750}"
+      minimum_rss_mb="${BYTESWEEP_AGGRESSIVE_MIN_RSS_MB:-32}"
+      minimum_mapping_kb="${BYTESWEEP_AGGRESSIVE_MIN_MAPPING_KB:-256}"
+      activity_ms="${BYTESWEEP_AGGRESSIVE_ACTIVITY_MS:-150}"
+      active_ticks="${BYTESWEEP_AGGRESSIVE_ACTIVE_TICKS:-1}"
+      native_settle_ms="${BYTESWEEP_AGGRESSIVE_SETTLE_MS:-750}"
       ;;
     ai-shield|*)
-      minimum_rss_mb="${REDUCE_MEMORY_MIN_RSS_MB:-64}"
-      minimum_mapping_kb="${REDUCE_MEMORY_MIN_MAPPING_KB:-1024}"
-      activity_ms="${REDUCE_MEMORY_ACTIVITY_MS:-300}"
-      active_ticks="${REDUCE_MEMORY_ACTIVE_TICKS:-0}"
-      native_settle_ms="${REDUCE_MEMORY_NATIVE_SETTLE_MS:-500}"
+      minimum_rss_mb="${BYTESWEEP_MIN_RSS_MB:-64}"
+      minimum_mapping_kb="${BYTESWEEP_MIN_MAPPING_KB:-1024}"
+      activity_ms="${BYTESWEEP_ACTIVITY_MS:-300}"
+      active_ticks="${BYTESWEEP_ACTIVE_TICKS:-0}"
+      native_settle_ms="${BYTESWEEP_NATIVE_SETTLE_MS:-500}"
       ;;
   esac
 
-  native_deadline_ms="${REDUCE_MEMORY_NATIVE_DEADLINE_MS:-0}"
+  native_deadline_ms="${BYTESWEEP_NATIVE_DEADLINE_MS:-0}"
   if [[ ! "${native_deadline_ms}" =~ ^[0-9]+$ ]]; then
     stage_native_pageout="invalid deadline configuration"
     return 0
@@ -744,15 +744,15 @@ run_native_pageout() {
     --settle-ms "${native_settle_ms}"
     --deadline-ms "${native_deadline_ms}"
   )
-  if [[ -n "${REDUCE_MEMORY_NATIVE_CANCEL_FILE:-}" ]]; then
-    arguments+=(--cancel-file "${REDUCE_MEMORY_NATIVE_CANCEL_FILE}")
+  if [[ -n "${BYTESWEEP_NATIVE_CANCEL_FILE:-}" ]]; then
+    arguments+=(--cancel-file "${BYTESWEEP_NATIVE_CANCEL_FILE}")
   fi
 
   # AI/GPU recognition belongs only to AI Shield. Normal, Smooth and
   # Aggressive remain application-agnostic so present and future software is
   # handled from kernel/process state instead of a hard-coded name list.
   if [[ "${profile}" == "ai-shield" ]]; then
-    if [[ "${REDUCE_MEMORY_PROTECT_GPU:-1}" == "1" ]]; then
+    if [[ "${BYTESWEEP_PROTECT_GPU:-1}" == "1" ]]; then
       arguments+=(--protect-gpu)
     fi
     local ai_pattern
@@ -892,12 +892,12 @@ run_cgroup_reclaim() {
 
   swap_total_kb="$(require_numeric_meminfo SwapTotal)"
   swap_free_kb="$(require_numeric_meminfo SwapFree)"
-  requested_swappiness="${REDUCE_MEMORY_RECLAIM_SWAPPINESS:-}"
+  requested_swappiness="${BYTESWEEP_RECLAIM_SWAPPINESS:-}"
   if [[ -z "${requested_swappiness}" ]]; then
     requested_swappiness="default"
   fi
   if [[ "${requested_swappiness}" != "default" && "${requested_swappiness}" != "max" && ! "${requested_swappiness}" =~ ^([0-9]|[1-9][0-9]|1[0-9][0-9]|200)$ ]]; then
-    echo "REDUCE_MEMORY_RECLAIM_SWAPPINESS harus default, max, atau angka 0-200." >&2
+    echo "BYTESWEEP_RECLAIM_SWAPPINESS harus default, max, atau angka 0-200." >&2
     return 2
   fi
 
@@ -1231,8 +1231,8 @@ run_privileged_mode() {
   fi
 
   if command -v sudo >/dev/null 2>&1; then
-    if [[ "${REDUCE_MEMORY_TARGET_PID:-}" =~ ^[1-9][0-9]*$ ]]; then
-      sudo env "REDUCE_MEMORY_TARGET_PID=${REDUCE_MEMORY_TARGET_PID}" -- "${script_path}" "${selected_mode}" "${extra_arguments[@]}"
+    if [[ "${BYTESWEEP_TARGET_PID:-}" =~ ^[1-9][0-9]*$ ]]; then
+      sudo env "BYTESWEEP_TARGET_PID=${BYTESWEEP_TARGET_PID}" -- "${script_path}" "${selected_mode}" "${extra_arguments[@]}"
     else
       sudo -- "${script_path}" "${selected_mode}" "${extra_arguments[@]}"
     fi
@@ -1325,18 +1325,18 @@ show_usage() {
   printf '%s\n\n' "${program_title}"
   cat <<'EOF'
 Usage:
-  reduce-memory                  Buka menu jika terminal interaktif
-  reduce-memory --menu           Paksa buka menu
-  reduce-memory check            Metrik dan dukungan kernel; read-only
-  reduce-memory status           Alias read-only untuk server
-  reduce-memory normal           Sync-only fallback tanpa root
-  sudo reduce-memory normal      Page-out konservatif aplikasi besar yang idle
-  sudo reduce-memory smooth      Page-out konservatif + file cache ringan
-  sudo reduce-memory ai-shield   Lindungi AI/GPU; page-out background idle
-  sudo reduce-memory aggressive  Process page-out + cache + cgroup reclaim
+  bytesweep                  Buka menu jika terminal interaktif
+  bytesweep --menu           Paksa buka menu
+  bytesweep check            Metrik dan dukungan kernel; read-only
+  bytesweep status           Alias read-only untuk server
+  bytesweep normal           Sync-only fallback tanpa root
+  sudo bytesweep normal      Page-out konservatif aplikasi besar yang idle
+  sudo bytesweep smooth      Page-out konservatif + file cache ringan
+  sudo bytesweep ai-shield   Lindungi AI/GPU; page-out background idle
+  sudo bytesweep aggressive  Process page-out + cache + cgroup reclaim
 
 Optional Aggressive setting:
-  sudo REDUCE_MEMORY_RECLAIM_MB=1024 reduce-memory aggressive
+  sudo BYTESWEEP_RECLAIM_MB=1024 bytesweep aggressive
 EOF
 }
 

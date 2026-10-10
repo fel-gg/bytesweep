@@ -10,8 +10,8 @@ import unittest
 from unittest import mock
 
 
-HELPER_PATH = pathlib.Path(__file__).resolve().parents[2] / "linux" / "native" / "reduce-memory-native"
-LOADER = importlib.machinery.SourceFileLoader("reduce_memory_native", str(HELPER_PATH))
+HELPER_PATH = pathlib.Path(__file__).resolve().parents[2] / "linux" / "native" / "bytesweep-native"
+LOADER = importlib.machinery.SourceFileLoader("bytesweep_native", str(HELPER_PATH))
 SPEC = importlib.util.spec_from_loader(LOADER.name, LOADER)
 MODULE = importlib.util.module_from_spec(SPEC)
 sys.modules[LOADER.name] = MODULE

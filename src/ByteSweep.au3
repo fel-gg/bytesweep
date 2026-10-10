@@ -3,10 +3,10 @@
 #NoTrayIcon
 If Not IsDeclared ( "Os" ) Then Global $OS
 ; String table inlined during verified static extraction
-Global $A3380B02A2C = "MustDeclareVars" , $A2790402500 = "GUI_RUNDEFMSG" , $A0B90601C20 = "GUIDataSeparatorChar" , $A5B90705434 = "WinDetectHiddenText" , $A1090900A56 = "1.7" , $A3A90B05762 = "ReduceMemory" , $A4890D04726 = "Reduce Memory" , $A36A0000608 = " - Author by BlueLife" , $A0CA0202515 = "[CLASS:_MReduce:v" , $A58A030490B = "]" , $A19A050611A = "2013-2024" , $A1FA0B0155D = " @UserName " , $A30A0F0565F = " @Compiled " , $A14B0102331 = " @AutoItExe " , $A19B0303F03 = " @OSArch " , $A1FB050530A = " @AutoItX64 " , $A24B0704245 = " @AutoItPID " , $A41B0904162 = " @OSVersion " , $A4EB0B05206 = "AutoIt.Error" , $A53B0E04938 = "_(XP|200(0|3))" , $A42C0005F35 = " @WindowsDir " , $A34C0203522 = "System32\" , $A17C0505B2A = " @WorkingDir " , $A48C0804D4D = "kernel32.dll" , $A23C0A04F06 = "user32.dll" , $A0CC0C01F2E = "advapi32.dll" , $A55C0E01626 = "shell32.dll" , _
+Global $A3380B02A2C = "MustDeclareVars" , $A2790402500 = "GUI_RUNDEFMSG" , $A0B90601C20 = "GUIDataSeparatorChar" , $A5B90705434 = "WinDetectHiddenText" , $A1090900A56 = "1.7" , $A3A90B05762 = "ByteSweep" , $A4890D04726 = "ByteSweep" , $A36A0000608 = " - Author by BlueLife" , $A0CA0202515 = "[CLASS:_MReduce:v" , $A58A030490B = "]" , $A19A050611A = "2013-2024" , $A1FA0B0155D = " @UserName " , $A30A0F0565F = " @Compiled " , $A14B0102331 = " @AutoItExe " , $A19B0303F03 = " @OSArch " , $A1FB050530A = " @AutoItX64 " , $A24B0704245 = " @AutoItPID " , $A41B0904162 = " @OSVersion " , $A4EB0B05206 = "AutoIt.Error" , $A53B0E04938 = "_(XP|200(0|3))" , $A42C0005F35 = " @WindowsDir " , $A34C0203522 = "System32\" , $A17C0505B2A = " @WorkingDir " , $A48C0804D4D = "kernel32.dll" , $A23C0A04F06 = "user32.dll" , $A0CC0C01F2E = "advapi32.dll" , $A55C0E01626 = "shell32.dll" , _
 $A16D000163E = "ole32.dll" , $A57D020482F = "comctl32.dll" , $A54D0402622 = "gdi32.dll" , $A0BD0604C48 = "psapi.dll" , $A34D090231C = " @ScriptDir " , $A18D0B05E2E = "Icons\" , $A12D0D0163B = ".ini" , $A5CE0702436 = "HideWindowOnStartup" , $A4DE0905E47 = "HideWhenMinimized" , $A54E0B00A4B = "WinSetOnTop" , $A05E0D01131 = "SystemUser" , $A63E0F04B1C = "TrayIconPack" , $A45F020231C = "TaskOptions" , $A5EF040325E = "UsedMemory" , $A27F050091E = "75%" , $A57F0603C63 = "[^0-9]" , $A26F080043F = "CountDown" , $A25F0A03415 = "ExclusionOpt" , $A2AF0C0551E = "Main" , $A2DF0D02906 = "Exclusions" , $A07F0F00236 = "Main" , $A3001000F39 = "Processes" , $A1C0130371A = "HKLM" , $A0601502317 = "HKCU" , $A2001601838 = "64" , $A1C0170504E = "64" , $A0E01E04600 = "Tahoma"
-; Reduce Memory project version (the original table entry is retained for provenance)
-$A1090900A56 = "4.0"
+; ByteSweep project version (the original table entry is retained for provenance)
+$A1090900A56 = "4.1"
 Opt ( $A3380B02A2C , 1 )
 Global Const $A4080C05448 = Chr ( 92 )
 Global Const $A2280D04544 = Chr ( 47 )
@@ -90,7 +90,7 @@ If $A37F0703A24 < 3 Then $A37F0703A24 = 3
 If StringLen ( $A37F0703A24 ) > 5 Then $A37F0703A24 = Number ( StringLeft ( $A37F0703A24 , 5 ) )
 
 ; Adaptive optimizer controls.  Missing keys keep the safe defaults so old
-; ReduceMemory.ini files remain fully compatible.
+; ByteSweep.ini files remain fully compatible.
 Global $RM_SmartOptimize = A5560304940 ( "SmartOptimize" , 1 , 0 , 1 )
 Global $RM_CooldownSeconds = RM_ReadBoundedInt ( "CooldownSeconds" , 300 , 30 , 86400 )
 Global $RM_HysteresisPercent = RM_ReadBoundedInt ( "HysteresisPercent" , 5 , 1 , 20 )
@@ -215,7 +215,7 @@ Global $RM_ChurnCooldownSeconds = 1800
 Global Const $RM_ChurnTTLSeconds = 2592000
 Global $RM_EffectivenessRoot = EnvGet ( "LOCALAPPDATA" )
 If StringLen ( $RM_EffectivenessRoot ) = 0 Then $RM_EffectivenessRoot = @AppDataDir
-Global $RM_EffectivenessPath = $RM_EffectivenessRoot & "\ReduceMemory\effectiveness.ini"
+Global $RM_EffectivenessPath = $RM_EffectivenessRoot & "\ByteSweep\effectiveness.ini"
 Global Const $RM_EffectivenessMaxBytes = 262144
 Global $RM_EffectivenessCachePath = ""
 Global $RM_EffectivenessCacheKey = ""
@@ -713,7 +713,7 @@ Func RM_MeasurementContractSelfTest ( )
 	If StringLeft ( RM_FormatResidentResult ( 0 , 0 , 1 ) , 7 ) <> "unknown" Then Return 0
 
 	Local $RM_OldEffectivenessPath = $RM_EffectivenessPath
-	$RM_EffectivenessPath = @TempDir & "\ReduceMemory-measurement-selftest-" & @AutoItPID & ".ini"
+	$RM_EffectivenessPath = @TempDir & "\ByteSweep-measurement-selftest-" & @AutoItPID & ".ini"
 	FileDelete ( $RM_EffectivenessPath )
 	RM_ResetSessionMeasurements ( )
 	Local $RM_NativeFixture = "protocol=2" & @LF & "session=selftest" & @LF & "terminal=done" & @LF & "mutated=1" & @LF & "exit_code=0" & @LF & "trimmed=2" & @LF & "resident_delta=-33554432" & @LF & "record_count=2" & @LF & _
@@ -886,7 +886,7 @@ EndFunc
 Func RM_AcquireHistoryLock ( )
 	Local $RM_UserScope = StringRegExpReplace ( StringLower ( @LogonDomain & "_" & @UserName ) , "[^a-z0-9._-]" , "_" )
 	If StringLen ( $RM_UserScope ) = 0 Then $RM_UserScope = "unknown-user"
-	Local $RM_Mutex = DllCall ( "kernel32.dll" , "handle" , "CreateMutexW" , "ptr" , 0 , "bool" , False , "wstr" , "Local\ReduceMemory.History.v3." & $RM_UserScope )
+	Local $RM_Mutex = DllCall ( "kernel32.dll" , "handle" , "CreateMutexW" , "ptr" , 0 , "bool" , False , "wstr" , "Local\ByteSweep.History.v3." & $RM_UserScope )
 	If @error Or Not IsArray ( $RM_Mutex ) Or $RM_Mutex [ 0 ] = 0 Then Return 0
 	Local $RM_LastError = DllCall ( "kernel32.dll" , "dword" , "GetLastError" )
 	If IsArray ( $RM_LastError ) And $RM_LastError [ 0 ] = 183 Then
@@ -935,7 +935,7 @@ Func RM_WriteEffectiveness ( $RM_ProcessName , $RM_Values )
 			If StringLen ( $RM_OldestKey ) > 0 Then IniDelete ( $RM_EffectivenessPath , "Process" , $RM_OldestKey )
 		EndIf
 	EndIf
-	DirCreate ( $RM_EffectivenessRoot & "\ReduceMemory" )
+	DirCreate ( $RM_EffectivenessRoot & "\ByteSweep" )
 	Local $RM_TempPath = $RM_EffectivenessPath & ".tmp-" & @AutoItPID & "-" & Int ( Random ( 1000 , 999999 , 1 ) )
 	FileDelete ( $RM_TempPath )
 	If FileExists ( $RM_EffectivenessPath ) Then
@@ -1242,7 +1242,7 @@ Func RM_AggressiveRelease ( $RM_Smooth = 0 , $RM_ProcessProfile = 2 )
 EndFunc
 
 Func RM_EmergencyRelease ( )
-	; Emergency intentionally uses profile 3: only ReduceMemory and Windows
+	; Emergency intentionally uses profile 3: only ByteSweep and Windows
 	; system processes are protected. It remains manual and never terminates an
 	; application; pages can be faulted back when applications use them again.
 	Local $RM_FirstPass = RM_AggressiveRelease ( 0 , 3 )
@@ -1425,7 +1425,7 @@ Func RM_RunAggressiveWorker ( $RM_Smooth = 0 )
 		Local $RM_AdminWorkerArgument = "/RMAGGRESSIVE"
 		If $RM_Smooth = 1 Then $RM_AdminWorkerArgument = "/RMSMOOTH"
 		If $RM_Smooth = 2 Then $RM_AdminWorkerArgument = "/RMEMERGENCY"
-		Local $RM_AdminResultPath = @TempDir & "\ReduceMemory-admin-worker-" & @AutoItPID & "-" & Int ( Random ( 100000 , 999999 , 1 ) ) & ".result"
+		Local $RM_AdminResultPath = @TempDir & "\ByteSweep-admin-worker-" & @AutoItPID & "-" & Int ( Random ( 100000 , 999999 , 1 ) ) & ".result"
 		Local $RM_AdminSession = RM_NewSessionID ( )
 		FileDelete ( $RM_AdminResultPath )
 		Local $RM_AdminCommand = '"' & @AutoItExe & '" ' & $RM_AdminWorkerArgument & ' /RMRESULT="' & $RM_AdminResultPath & '" /RMSESSION=' & $RM_AdminSession
@@ -1445,7 +1445,7 @@ Func RM_RunAggressiveWorker ( $RM_Smooth = 0 )
 	Local $RM_WorkerArgument = "/RMAGGRESSIVE"
 	If $RM_Smooth = 1 Then $RM_WorkerArgument = "/RMSMOOTH"
 	If $RM_Smooth = 2 Then $RM_WorkerArgument = "/RMEMERGENCY"
-	Local $RM_ResultPath = @TempDir & "\ReduceMemory-worker-" & @AutoItPID & "-" & Int ( Random ( 100000 , 999999 , 1 ) ) & ".result"
+	Local $RM_ResultPath = @TempDir & "\ByteSweep-worker-" & @AutoItPID & "-" & Int ( Random ( 100000 , 999999 , 1 ) ) & ".result"
 	Local $RM_ElevatedSession = RM_NewSessionID ( )
 	FileDelete ( $RM_ResultPath )
 	Local $RM_WorkerParameters = $RM_WorkerArgument & ' /RMRESULT="' & $RM_ResultPath & '" /RMSESSION=' & $RM_ElevatedSession
@@ -1505,7 +1505,7 @@ Func RM_ModeChanged ( )
 			ExitLoop
 		EndIf
 	Next
-	IniWrite ( @ScriptDir & "\ReduceMemory.ini" , "Main" , "OptimizeMode" , $RM_OptimizeMode )
+	IniWrite ( @ScriptDir & "\ByteSweep.ini" , "Main" , "OptimizeMode" , $RM_OptimizeMode )
 EndFunc
 
 Func RM_EnsureModeList ( $RM_ControlID , $RM_DefaultText = "Normal Optimize" )
@@ -1568,7 +1568,7 @@ Func RM_GetNativeStageTarget ( )
 EndFunc
 
 Func RM_WriteLog ( $RM_StableGain , $RM_ReboundDetected )
-	Local $RM_LogPath = @ScriptDir & "\ReduceMemory.log"
+	Local $RM_LogPath = @ScriptDir & "\ByteSweep.log"
 	; Rotate instead of deleting so the previous 128 KB of history survives.
 	If FileExists ( $RM_LogPath ) And FileGetSize ( $RM_LogPath ) > 131072 Then FileMove ( $RM_LogPath , $RM_LogPath & ".1" , 1 )
 	Local $RM_ReboundValue = "no"
@@ -1589,7 +1589,7 @@ Func RM_GetMemoryLoadPercent ( )
 EndFunc
 
 Func RM_AcquireStartupMonitor ( )
-	Local $RM_Mutex = DllCall ( "kernel32.dll" , "handle" , "CreateMutexW" , "ptr" , 0 , "bool" , False , "wstr" , "Local\ReduceMemory.StartupMonitor.v1" )
+	Local $RM_Mutex = DllCall ( "kernel32.dll" , "handle" , "CreateMutexW" , "ptr" , 0 , "bool" , False , "wstr" , "Local\ByteSweep.StartupMonitor.v1" )
 	If @error Or Not IsArray ( $RM_Mutex ) Or $RM_Mutex [ 0 ] = 0 Then Return 0
 	Local $RM_LastError = DllCall ( "kernel32.dll" , "dword" , "GetLastError" )
 	If IsArray ( $RM_LastError ) And $RM_LastError [ 0 ] = 183 Then
@@ -1843,7 +1843,7 @@ Func RM_AcquireOptimizationLock ( )
 	; while the Local namespace keeps separate users from blocking each other.
 	Local $RM_UserScope = StringRegExpReplace ( StringLower ( @LogonDomain & "_" & @UserName ) , "[^a-z0-9._-]" , "_" )
 	If StringLen ( $RM_UserScope ) = 0 Then $RM_UserScope = "unknown-user"
-	Local $RM_Mutex = DllCall ( "kernel32.dll" , "handle" , "CreateMutexW" , "ptr" , 0 , "bool" , False , "wstr" , "Local\ReduceMemory.Optimize.v3." & $RM_UserScope )
+	Local $RM_Mutex = DllCall ( "kernel32.dll" , "handle" , "CreateMutexW" , "ptr" , 0 , "bool" , False , "wstr" , "Local\ByteSweep.Optimize.v3." & $RM_UserScope )
 	If @error Or Not IsArray ( $RM_Mutex ) Or $RM_Mutex [ 0 ] = 0 Then Return 0
 	Local $RM_LastError = DllCall ( "kernel32.dll" , "dword" , "GetLastError" )
 	If IsArray ( $RM_LastError ) And $RM_LastError [ 0 ] = 183 Then
@@ -1869,14 +1869,14 @@ Func RM_RunOptimize ( )
 	If $RM_ReboundAt > 0 And TimerDiff ( $RM_ReboundAt ) >= $RM_ReboundCooldownSeconds * 1000 Then $RM_ReboundAt = 0
 	; Ask before Stage 1 so cancelling Emergency never trims anything first.
 	If $RM_OptimizeMode = $RM_MODE_EMERGENCY And $RM_AutoTrigger = 0 Then
-		If MsgBox ( 48 + 4 , "ReduceMemory", "Emergency Release akan memangkas aplikasi user termasuk aplikasi aktif, lalu melakukan pelepasan memory Windows penuh dua kali." & @CRLF & @CRLF & "Aplikasi tidak akan ditutup, tetapi reload atau stutter sementara dapat terjadi." & @CRLF & @CRLF & "Lanjutkan sekarang?" , 0 , $A59A0605008 ) <> 6 Then
+		If MsgBox ( 48 + 4 , "ByteSweep", "Emergency Release akan memangkas aplikasi user termasuk aplikasi aktif, lalu melakukan pelepasan memory Windows penuh dua kali." & @CRLF & @CRLF & "Aplikasi tidak akan ditutup, tetapi reload atau stutter sementara dapat terjadi." & @CRLF & @CRLF & "Lanjutkan sekarang?" , 0 , $A59A0605008 ) <> 6 Then
 			GUICtrlSetData ( $A3411D0002B [ 4 ] , "Emergency cancelled - no memory was changed" )
 			Return
 		EndIf
 	EndIf
 	Local $RM_OptimizationLock = RM_AcquireOptimizationLock ( )
 	If $RM_OptimizationLock = 0 Then
-		GUICtrlSetData ( $A3411D0002B [ 4 ] , "Another Reduce Memory optimization is already running" )
+		GUICtrlSetData ( $A3411D0002B [ 4 ] , "Another ByteSweep optimization is already running" )
 		Return
 	EndIf
 	GUISetState ( Execute ( $A1251701F38 ) , $A59A0605008 )
@@ -1909,7 +1909,7 @@ Func RM_RunOptimize ( )
 	If $RM_OptimizeMode = $RM_MODE_EMERGENCY Then $RM_AggressiveResult = RM_RunAggressiveWorker ( 2 )
 	If $RM_LastWorkerRecoveryPasses > 0 Then $RM_LastNativeStageTarget += $RM_LastWorkerRecoveryPasses * 2
 	If $RM_OptimizeMode = $RM_MODE_TEMP And $RM_AutoTrigger = 0 Then
-		If MsgBox ( 48 + 4 , "ReduceMemory", "Aggressive + Delete Temp akan menghapus file secara permanen dari %TEMP% dan C:\Windows\Temp." & @CRLF & @CRLF & "File yang sedang digunakan akan dilewati. Jangan jalankan saat instalasi atau Windows Update sedang berlangsung." & @CRLF & @CRLF & "Lanjutkan sekarang?" , 0 , $A59A0605008 ) = 6 Then RM_DeleteTempFiles ( )
+		If MsgBox ( 48 + 4 , "ByteSweep", "Aggressive + Delete Temp akan menghapus file secara permanen dari %TEMP% dan C:\Windows\Temp." & @CRLF & @CRLF & "File yang sedang digunakan akan dilewati. Jangan jalankan saat instalasi atau Windows Update sedang berlangsung." & @CRLF & @CRLF & "Lanjutkan sekarang?" , 0 , $A59A0605008 ) = 6 Then RM_DeleteTempFiles ( )
 	EndIf
 	If RM_ModeUsesSystemRelease ( ) Then
 		Sleep ( 500 )
@@ -2092,7 +2092,7 @@ Func RM_HandleCommandLine ( )
 		Exit 0
 	EndIf
 	If $CMDLINE [ 1 ] = "/RMUISMOKETEST" Then
-		Local $RM_UiSmokeWindow = GUICreate ( "Reduce Memory UI Smoke" , 420 , 120 )
+		Local $RM_UiSmokeWindow = GUICreate ( "ByteSweep UI Smoke" , 420 , 120 )
 		Local $RM_UiSmokeCombo = GUICtrlCreateCombo ( "" , 10 , 20 , 390 , 25 , 3 )
 		GUICtrlSetData ( $RM_UiSmokeCombo , $RM_MODE_OPTIONS , $RM_MODE_NORMAL )
 		If RM_EnsureModeList ( $RM_UiSmokeCombo , "Normal Optimize" ) <> 6 Then
@@ -2152,7 +2152,7 @@ Func RM_HandleCommandLine ( )
 			If RunWait ( '"' & $RM_SelfNativeWorker & '" /selftest' , @ScriptDir , @SW_HIDE ) <> 0 Then Exit 35
 		EndIf
 		Local $RM_SelfHistoryPath = $RM_EffectivenessPath
-		$RM_EffectivenessPath = @TempDir & "\ReduceMemory-effectiveness-selftest-" & @AutoItPID & ".ini"
+		$RM_EffectivenessPath = @TempDir & "\ByteSweep-effectiveness-selftest-" & @AutoItPID & ".ini"
 		FileDelete ( $RM_EffectivenessPath )
 		IniWrite ( $RM_EffectivenessPath , "Process" , RM_LegacyEffectivenessKey ( "legacy-worker.exe" ) , "1|4096|0|0|" & RM_EffectivenessNow ( ) )
 		Local $RM_LegacyHistory = RM_ReadEffectiveness ( "legacy-worker.exe" )
@@ -2196,7 +2196,7 @@ Func RM_HandleCommandLine ( )
 		$RM_LastNativeStageTarget = 0
 		$RM_StablePressureText = $RM_SelfPressure
 		RM_WriteLog ( 0 , 0 )
-		If Not FileExists ( @ScriptDir & "\ReduceMemory.log" ) Then Exit 13
+		If Not FileExists ( @ScriptDir & "\ByteSweep.log" ) Then Exit 13
 		Exit 0
 	EndIf
 	If $CMDLINE [ 1 ] = "/RMMONITORSELFTEST" Then
@@ -2798,7 +2798,7 @@ Func A0D10C02932 ( )
 EndFunc
 Func A0B10D03324 ( )
 	If Not IsDeclared ( "SSA0B10D03324" ) Then
-		Global $A2F2230475A = "ReduceMemory.lnk" , $A3B2240294F = "/RMAUTOSTART" , $A2622504737 = "Reduce Memory"
+		Global $A2F2230475A = "ByteSweep.lnk" , $A3B2240294F = "/RMAUTOSTART" , $A2622504737 = "ByteSweep"
 		Global $SSA0B10D03324 = 1
 	EndIf
 	If StringLen ( $A1801C02855 ) = 0 Or FileExists ( $A1801C02855 ) = 0 Then Return 0
@@ -2815,7 +2815,7 @@ Func A0310E01012 ( )
 EndFunc
 Func A3C10F0125A ( $A0522602B41 , $A012270461C = @DesktopDir )
 	If Not IsDeclared ( "SSA3C10F0125A" ) Then
-		Global $A4222C00457 = "*.lnk" , $A1022D02C19 = "/H" , $A3C22E04635 = "Reduce Memory"
+		Global $A4222C00457 = "*.lnk" , $A1022D02C19 = "/H" , $A3C22E04635 = "ByteSweep"
 		Global $SSA3C10F0125A = 1
 	EndIf
 	If StringRight ( $A012270461C , 1 ) <> $A4080C05448 Then $A012270461C &= $A4080C05448
@@ -3055,8 +3055,8 @@ Func RM_RunConfiguredTrim ( $RM_Profile = - 1 )
 EndFunc
 
 Func RM_GetNativeWorkerPath ( )
-	Local $RM_WorkerName = "ReduceMemoryWorker.exe"
-	If @AutoItX64 Then $RM_WorkerName = "ReduceMemoryWorker_x64.exe"
+	Local $RM_WorkerName = "ByteSweepWorker.exe"
+	If @AutoItX64 Then $RM_WorkerName = "ByteSweepWorker_x64.exe"
 	Local $RM_WorkerPath = @ScriptDir & "\" & $RM_WorkerName
 	If FileExists ( $RM_WorkerPath ) Then Return $RM_WorkerPath
 	Return ""
@@ -3348,7 +3348,7 @@ Func RM_RunNativeProcessPass ( $RM_Profile , $RM_IncludeOnly , $RM_ProcessFilter
 	RM_ResetNativeMetrics ( )
 	Local $RM_WorkerPath = RM_GetNativeWorkerPath ( )
 	If StringLen ( $RM_WorkerPath ) = 0 Then Return - 1
-	Local $RM_ResultPath = @TempDir & "\ReduceMemory-native-" & @AutoItPID & "-" & Int ( Random ( 100000 , 999999 , 1 ) ) & ".result"
+	Local $RM_ResultPath = @TempDir & "\ByteSweep-native-" & @AutoItPID & "-" & Int ( Random ( 100000 , 999999 , 1 ) ) & ".result"
 	Local $RM_HandshakePath = $RM_ResultPath & ".ready"
 	Local $RM_SessionID = RM_NewSessionID ( )
 	Local $RM_Stage = RM_BuildWindowsProcessStage ( $RM_WorkerPath , $RM_Profile , $RM_IncludeOnly , $RM_ProcessFilter , $RM_SessionID , $RM_ResultPath , $RM_HandshakePath )

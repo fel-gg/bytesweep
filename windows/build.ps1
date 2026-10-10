@@ -13,7 +13,7 @@ $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version 2.0
 
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
-$sourcePath = Join-Path $repositoryRoot 'src\ReduceMemory.au3'
+$sourcePath = Join-Path $repositoryRoot 'src\ByteSweep.au3'
 $nativeBuildScript = Join-Path $PSScriptRoot 'native\build.ps1'
 $autoIt32 = Join-Path $AutoItRoot 'AutoIt3.exe'
 $autoIt64 = Join-Path $AutoItRoot 'AutoIt3_x64.exe'
@@ -28,17 +28,17 @@ foreach ($requiredPath in @($sourcePath, $nativeBuildScript, $autoIt32, $autoIt6
 }
 
 $versionMatch = Select-String -LiteralPath $sourcePath -Pattern '^\$A1090900A56\s*=\s*"([0-9]+\.[0-9]+)"\s*$' | Select-Object -First 1
-if ($null -eq $versionMatch) { throw 'Project version was not found in src\ReduceMemory.au3' }
+if ($null -eq $versionMatch) { throw 'Project version was not found in src\ByteSweep.au3' }
 $projectVersion = $versionMatch.Matches[0].Groups[1].Value
 
-$scratchRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('ReduceMemoryBuild-' + [guid]::NewGuid().ToString('N'))
+$scratchRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('ByteSweepBuild-' + [guid]::NewGuid().ToString('N'))
 $tempRoot = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath())
-$scratchSource = Join-Path $scratchRoot 'ReduceMemory.au3'
+$scratchSource = Join-Path $scratchRoot 'ByteSweep.au3'
 $stagedFiles = @(
-    'ReduceMemory.exe',
-    'ReduceMemory_x64.exe',
-    'ReduceMemoryWorker.exe',
-    'ReduceMemoryWorker_x64.exe'
+    'ByteSweep.exe',
+    'ByteSweep_x64.exe',
+    'ByteSweepWorker.exe',
+    'ByteSweepWorker_x64.exe'
 )
 
 function Invoke-CheckedProcess {
@@ -87,10 +87,10 @@ try {
         -Description 'AutoIt syntax validation'
 
     Invoke-CheckedProcess -FilePath $compiler32 `
-        -Arguments @('/in', $scratchSource, '/out', (Join-Path $scratchRoot 'ReduceMemory.exe'), '/x86', '/gui', '/nopack') `
+        -Arguments @('/in', $scratchSource, '/out', (Join-Path $scratchRoot 'ByteSweep.exe'), '/x86', '/gui', '/nopack') `
         -Description 'AutoIt x86 frontend compilation'
     Invoke-CheckedProcess -FilePath $compiler64 `
-        -Arguments @('/in', $scratchSource, '/out', (Join-Path $scratchRoot 'ReduceMemory_x64.exe'), '/x64', '/gui', '/nopack') `
+        -Arguments @('/in', $scratchSource, '/out', (Join-Path $scratchRoot 'ByteSweep_x64.exe'), '/x64', '/gui', '/nopack') `
         -Description 'AutoIt x64 frontend compilation'
 
     & $nativeBuildScript -ZigPath $ZigPath -OutputDirectory $scratchRoot
@@ -110,7 +110,7 @@ try {
         throw 'Unable to resolve the source Git commit'
     }
     $trackedChanges = @(& git -C $repositoryRoot status --porcelain -- `
-        'src/ReduceMemory.au3' 'windows/native/reduce_memory_worker.c' `
+        'src/ByteSweep.au3' 'windows/native/bytesweep_worker.c' `
         'windows/native/build.ps1' 'windows/build.ps1')
     if ($LASTEXITCODE -ne 0) { throw 'Unable to inspect the source worktree' }
 
@@ -133,7 +133,7 @@ try {
 
     $buildInputPaths = @(
         $sourcePath,
-        (Join-Path $repositoryRoot 'windows\native\reduce_memory_worker.c'),
+        (Join-Path $repositoryRoot 'windows\native\bytesweep_worker.c'),
         $nativeBuildScript,
         $au3Check,
         $compiler32,
@@ -172,7 +172,7 @@ finally {
         $resolvedScratchRoot = [System.IO.Path]::GetFullPath($scratchRoot)
         $scratchLeaf = Split-Path -Leaf $resolvedScratchRoot
         if (-not $resolvedScratchRoot.StartsWith($tempRoot, [System.StringComparison]::OrdinalIgnoreCase) -or
-            -not $scratchLeaf.StartsWith('ReduceMemoryBuild-', [System.StringComparison]::Ordinal)) {
+            -not $scratchLeaf.StartsWith('ByteSweepBuild-', [System.StringComparison]::Ordinal)) {
             throw "Refusing to remove unexpected build directory: $resolvedScratchRoot"
         }
         Remove-Item -LiteralPath $resolvedScratchRoot -Recurse -Force

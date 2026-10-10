@@ -1,4 +1,4 @@
-# Reduce Memory native worker protocol v2
+# ByteSweep native worker protocol v2
 
 Dokumen ini adalah kontrak antara frontend AutoIt, worker Windows, dan test
 harness. Versi protokol tidak sama dengan versi aplikasi.

@@ -71,7 +71,7 @@ done
   printf 'swap_free_kib=%s\n' "${swap_free_kib}"
   printf 'cgroup_v2=%s\n' "$(if [[ -f /sys/fs/cgroup/cgroup.controllers ]]; then printf true; else printf false; fi)"
   printf 'cgroup_mount=%s\n' "$(awk '$0 ~ / - cgroup2 / { print $5; exit }' /proc/self/mountinfo 2>/dev/null || true)"
-  printf 'process_madvise_probe=%s\n' "$(linux/native/reduce-memory-native check | awk -F= '$1 == "native_status" { print $2; exit }')"
+  printf 'process_madvise_probe=%s\n' "$(linux/native/bytesweep-native check | awk -F= '$1 == "native_status" { print $2; exit }')"
 } >"${temporary_path}"
 
 required_keys=(schema architecture pointer_bits page_size_bytes cpu_count numa_nodes mem_total_kib mem_available_kib swap_total_kib swap_free_kib cgroup_v2 process_madvise_probe)

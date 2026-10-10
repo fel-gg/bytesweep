@@ -1,240 +1,103 @@
-# Reduce Memory untuk Linux
+# ByteSweep untuk Linux
 
-Versi Linux memakai jalur yang dibuat khusus untuk kernel Linux. Ia tidak
-menyalin `EmptyWorkingSet` Windows karena Linux tidak mempunyai API global yang
-sama.
+ByteSweep di Linux meminta kernel memindahkan memori aplikasi yang sedang diam
+keluar dari RAM. Aplikasinya tetap hidup dan memuat lagi datanya saat dipakai.
 
-Engine Linux 4.0 menggabungkan tiga mekanisme native yang berbeda:
+Yang dipakai adalah fitur kernel Linux sendiri:
 
-```text
-pidfd_open + process_madvise(MADV_PAGEOUT)
-drop_caches
-cgroup v2 memory.reclaim
-```
+- `process_madvise(MADV_PAGEOUT)` untuk memori aplikasi yang diam,
+- `drop_caches` untuk cache file,
+- `memory.reclaim` dari cgroup v2.
 
-Helper page-out membaca `/proc` secara dinamis. Tidak ada daftar Firefox,
-Chrome, Discord, Steam, atau nama software lain. Aplikasi yang nanti baru
-di-install tetap terdeteksi sebagai proses Linux biasa.
+Aplikasi dipilih dari perilakunya (besar dan sedang diam), bukan dari daftar
+nama. Jadi aplikasi yang baru di-install pun otomatis ikut.
 
-AI Shield menambahkan perlindungan khusus di atas scan dinamis itu: proses yang
-memegang device GPU, pola nama/command line AI, dan seluruh child process-nya
-tidak dipage-out. Polanya bisa diganti lewat `REDUCE_MEMORY_AI_PATTERNS` untuk
-software baru tanpa mengubah source.
+## Install
 
-## Kenapa versi lama cuma mengurangi sekitar 100 MB?
-
-Jalur lama hanya:
-
-```text
-sync -> drop_caches -> compact_memory
-```
-
-Kalau file cache Mint hanya 100 MB, memang hanya sekitar itu yang dapat dilepas.
-`compact_memory` juga bukan pelepas RAM; fitur tersebut merapikan free pages
-menjadi blok yang lebih kontigu.
-
-Jalur Aggressive terbaru:
-
-```text
-1. sync pending filesystem writes
-2. scan semua proses UID non-system melalui /proc
-3. lindungi proses aktif, foreground, dan process tree Reduce Memory
-4. kirim mapping yang aman dan resident dalam batch MADV_PAGEOUT
-5. simpan baseline RSS hanya untuk proses yang benar-benar menerima advice
-6. drop page cache + reclaimable slab
-7. jalankan cgroup v2 proactive reclaim (default sekitar 1/8 RAM, dibatasi);
-   saat swap tersedia, prioritaskan anonymous RAM dengan `swappiness=max`
-8. lakukan page-out kedua setelah cache/cgroup reclaim
-9. ukur peak `MemAvailable`, tunggu refault pertama selama 3 detik, lalu ukur
-   stable gain dan rebound
-10. bila rebound minimal 64 MB sekaligus minimal 20% dari peak gain, lakukan
-    tepat satu recovery page-out; proses tetap hidup dan tidak ada loop permanen
-11. ukur MemAvailable, cache, anonymous RAM, swap, dan perubahan RSS unik dari
-    baseline sesi ke snapshot akhir
-```
-
-`MADV_PAGEOUT` meminta kernel mereclaim page pada range yang dipilih. Anonymous
-pages dapat dipindahkan ke swap. File-backed dirty pages dapat ditulis ke
-storage. Aplikasi tetap hidup dan memuat page itu kembali saat diperlukan.
-
-## Mode
-
-- `normal`: dengan root, page-out hanya aplikasi besar (minimal 256 MB) yang
-  benar-benar idle; tanpa root tetap punya fallback `sync` yang aman.
-- `smooth`: page-out konservatif aplikasi idle (minimal 128 MB), lalu melepas
-  file/page cache ringan.
-- `ai-shield`: melindungi AI/GPU workload lalu melakukan page-out hanya pada
-  proses background yang idle. Tidak membuang cache global atau menjalankan
-  root-cgroup reclaim.
-- `aggressive`: scan semua UID non-system, page-out aplikasi idle mulai 32 MB
-  dan mapping mulai 256 KB, lalu drop page cache, reclaimable slab, cgroup v2
-  reclaim, page-out ulang, dan satu recovery pass bersyarat setelah pengukuran
-  rebound. Tidak memakai daftar nama AI/GPU.
-- `status` atau `check`: hanya membaca metrik dan kemampuan kernel. Tidak
-  mengubah RAM atau cache.
-
-## Perlindungan engine
-
-Engine tidak membunuh proses. Sebelum page-out, ia melewati:
-
-- PID sistem awal dan kernel thread;
-- proses di bawah batas RSS profil (256 MB Normal, 128 MB Smooth, 64 MB AI
-  Shield, dan 32 MB Aggressive);
-- proses yang aktif selama sampling profil;
-- aplikasi foreground yang dapat dideteksi melalui X11/Cinnamon;
-- child process dari aplikasi yang dilindungi;
-- proses AI/GPU dan seluruh child process-nya, **hanya pada AI Shield**;
-- terminal, `sudo`, Reduce Memory, dan seluruh ancestor process-nya;
-- locked memory;
-- device/PFN/IO dan HugeTLB mappings;
-- stack, VDSO, VVAR, dan mapping khusus kernel.
-
-Proteksi umum tidak bergantung pada nama aplikasi. AI Shield menambahkan pola
-yang dapat dikonfigurasi dan deteksi pemilik GPU. Untuk Wayland/compositor yang
-tidak mengekspos active-window PID, CPU activity shield dan process-tree shield
-tetap bekerja, tetapi deteksi foreground tidak selalu tersedia.
-
-## Laporan hasil
-
-Setelah operasi, program memisahkan:
-
-```text
-Available memory change
-File cache released
-Anonymous RAM change
-Swap usage change
-Native process page-out status
-Processes scanned/paged out/skipped/protected
-Mappings advised
-Bytes advised by the kernel
-Signed process RSS change dan jumlah target unknown
-Batched syscall count and scalar fallbacks
-Native page-out pass count
-cgroup memory.reclaim status
-```
-
-`Bytes advised` adalah jumlah range yang diterima syscall, bukan klaim RAM yang
-pasti dilepas. `Process RSS change` dan `Available change` adalah pengukuran
-sesudah operasi. Hasil RSS hanya memakai proses yang benar-benar menerima
-advice dan masih memiliki identitas yang sama. Proses yang keluar, berganti
-identitas, atau tidak lagi dapat dibaca karena izin berubah dicatat terpisah dan
-tidak menambah angka penghematan. Hasil beberapa pass memakai baseline pertama
-dan snapshot akhir per PID, jadi target yang sama tidak dihitung dua kali.
-
-## Linux Desktop, termasuk Linux Mint
-
-Dari folder `linux`:
+Desktop (termasuk Linux Mint), dari folder `linux`:
 
 ```bash
-chmod +x ReduceMemory_Linux.sh native/reduce-memory-native desktop/Install_Desktop.sh
+chmod +x ByteSweep_Linux.sh native/bytesweep-native desktop/Install_Desktop.sh
 ./desktop/Install_Desktop.sh
 ```
 
-Setelah itu cari **Reduce Memory** dari application menu. Password administrator
-baru diminta setelah Normal, Smooth, AI Shield, atau Aggressive dipilih.
-Menjalankan `reduce-memory normal` tanpa root tetap memakai fallback `sync`.
-
-Installer Desktop membuat:
+Lalu buka **ByteSweep** dari menu aplikasi, atau jalankan `bytesweep` di
+terminal. Installer hanya membuat tiga file:
 
 ```text
-~/.local/bin/reduce-memory
-~/.local/bin/reduce-memory-native
-~/.local/share/applications/reduce-memory.desktop
+~/.local/bin/bytesweep
+~/.local/bin/bytesweep-native
+~/.local/share/applications/bytesweep.desktop
 ```
 
-Tidak ada daemon, autostart, cron, atau service tersembunyi.
-
-Periksa dukungan kernel:
+Server atau VPS:
 
 ```bash
-reduce-memory status
-reduce-memory-native check
-```
-
-Jalankan mode kuat:
-
-```bash
-sudo reduce-memory aggressive
-sudo reduce-memory ai-shield
-```
-
-## Linux Server atau VPS
-
-```bash
-cd linux
-chmod +x ReduceMemory_Linux.sh native/reduce-memory-native server/Install_Server.sh
+chmod +x ByteSweep_Linux.sh native/bytesweep-native server/Install_Server.sh
 sudo ./server/Install_Server.sh
+sudo bytesweep-server smooth
 ```
 
-Lalu:
+Tanpa install juga bisa: `sudo ./ByteSweep_Linux.sh smooth`.
+
+Tidak ada daemon, autostart, cron, atau service yang dibuat.
+
+## Mode
+
+| Mode | Yang dilakukan |
+| --- | --- |
+| `status` / `check` | Hanya membaca kondisi memori dan dukungan kernel. Tidak mengubah apa pun. |
+| `normal` | Hanya aplikasi besar (256 MB ke atas) yang benar-benar diam. |
+| `smooth` | Aplikasi diam mulai 128 MB, ditambah melepas cache ringan. |
+| `ai-shield` | Aplikasi diam mulai 64 MB, tapi proses AI/GPU dan turunannya dilindungi. |
+| `aggressive` | Paling kuat: aplikasi diam mulai 32 MB, cache, dan cgroup reclaim. |
+
+Mode selain `status` butuh `sudo` supaya bisa bekerja penuh. Tanpa `sudo`,
+`normal` hanya menjalankan `sync`.
+
+## Yang selalu dilewati
+
+- proses sistem, root, dan kernel thread,
+- aplikasi yang sedang aktif atau sedang di depan (foreground),
+- terminal, `sudo`, dan ByteSweep sendiri,
+- memori yang dikunci (locked) dan mapping khusus kernel.
+
+Di Wayland, deteksi jendela foreground tidak selalu tersedia. Perlindungan
+berdasarkan aktivitas CPU tetap berjalan.
+
+## Kebutuhan
+
+- Kernel Linux 5.10 atau lebih baru, Python 3, Bash, `awk`, dan `sync`.
+- Swap aktif. Tanpa swap, memori aplikasi tidak punya tempat untuk dipindahkan.
+- WSL2 bisa dipakai, tapi pengembalian RAM ke Windows tetap diatur WSL2.
+- Git Bash/MSYS bukan Linux dan sengaja ditolak.
+
+## Pengaturan opsional
+
+Diatur lewat environment variable, contohnya:
 
 ```bash
-reduce-memory-server status
-sudo reduce-memory-server normal
-sudo reduce-memory-server smooth
-sudo reduce-memory-server ai-shield
-sudo reduce-memory-server aggressive
+sudo BYTESWEEP_RECLAIM_MB=1024 ./ByteSweep_Linux.sh aggressive
+sudo BYTESWEEP_AI_PATTERNS='my-ai-worker|model-server' ./ByteSweep_Linux.sh ai-shield
+BYTESWEEP_TARGET_PID=1234 ./ByteSweep_Linux.sh aggressive
 ```
 
-Varian Server membuat semua profil native memeriksa UID aplikasi biasa sekaligus
-akun service non-root di bawah UID 1000. Ini mencakup workload seperti web worker
-atau database yang tidak berjalan sebagai login user. UID root, kernel thread,
-dan nama daemon inti tetap dilindungi. Aggressive Desktop memeriksa semua UID
-1000 ke atas; Normal, Smooth, dan AI Shield Desktop tetap dibatasi ke akun
-pemanggil kecuali `REDUCE_MEMORY_ALL_USERS=1` diberikan. Service UID Desktop
-dapat disertakan secara eksplisit dengan `REDUCE_MEMORY_INCLUDE_SERVICE_USERS=1`.
+| Variabel | Fungsi |
+| --- | --- |
+| `BYTESWEEP_RECLAIM_MB` | Target cgroup reclaim dalam MB. |
+| `BYTESWEEP_RECLAIM_SWAPPINESS` | `default`, `max`, atau 0-200. |
+| `BYTESWEEP_AGGRESSIVE_MIN_RSS_MB` | Batas ukuran minimal aplikasi di mode aggressive. |
+| `BYTESWEEP_AI_PATTERNS` | Pola nama proses AI yang dilindungi AI Shield. |
+| `BYTESWEEP_ALL_USERS` | Ikutkan semua user, bukan hanya pemanggil. |
+| `BYTESWEEP_INCLUDE_SERVICE_USERS` | Ikutkan akun service (UID di bawah 1000). |
+| `BYTESWEEP_TARGET_PID` | Batasi ke satu proses saja. |
 
-Varian Server tidak membuat desktop launcher, daemon, cron, atau systemd
-service.
+## Batasan
 
-## Jalankan langsung tanpa install
+Tidak ada program yang bisa menjamin jumlah RAM tertentu. Memori yang aktif,
+terkunci, atau langsung dipakai lagi tidak akan tetap kosong. Mode `aggressive`
+bisa membuat aplikasi terasa lambat sebentar saat dibuka lagi.
 
-```bash
-./native/reduce-memory-native check
-./ReduceMemory_Linux.sh status
-./ReduceMemory_Linux.sh normal
-sudo ./ReduceMemory_Linux.sh normal
-sudo ./ReduceMemory_Linux.sh smooth
-sudo ./ReduceMemory_Linux.sh ai-shield
-sudo ./ReduceMemory_Linux.sh aggressive
-```
-
-Pengaturan optional:
-
-```bash
-sudo REDUCE_MEMORY_RECLAIM_MB=1024 ./ReduceMemory_Linux.sh aggressive
-sudo REDUCE_MEMORY_RECLAIM_SWAPPINESS=max ./ReduceMemory_Linux.sh aggressive
-sudo REDUCE_MEMORY_AGGRESSIVE_MIN_RSS_MB=64 ./ReduceMemory_Linux.sh aggressive
-sudo REDUCE_MEMORY_INCLUDE_SERVICE_USERS=1 ./ReduceMemory_Linux.sh aggressive
-sudo REDUCE_MEMORY_AI_PATTERNS='my-ai-worker|future-model-server' ./ReduceMemory_Linux.sh ai-shield
-REDUCE_MEMORY_TARGET_PID=1234 ./ReduceMemory_Linux.sh aggressive
-```
-
-`REDUCE_MEMORY_TARGET_PID` digunakan oleh benchmark atau supervisor yang sudah
-memiliki satu PID terverifikasi. Saat diisi, native page-out dibatasi ke instance
-itu dan nilai diteruskan melewati `sudo`; launcher tidak melakukan scan luas
-sebagai fallback.
-
-## Dukungan dan batas nyata
-
-- UI Bash membutuhkan kernel Linux, Bash, `awk`, dan `sync`.
-- Native process page-out membutuhkan Python 3, kernel Linux 5.10 atau lebih
-  baru, `CONFIG_ADVISE_SYSCALLS`, akses ptrace yang diizinkan, dan
-  `CAP_SYS_NICE`. Menjalankan mode native melalui `sudo` menyediakan capability
-  tersebut pada instalasi Linux biasa.
-- Anonymous/private application pages membutuhkan swap agar bisa dipindahkan
-  keluar dari RAM tanpa menghilangkan datanya.
-- `REDUCE_MEMORY_RECLAIM_SWAPPINESS` menerima `default`, `max`, atau 0-200.
-  Default Aggressive adalah `max` ketika swap tersedia, sehingga tahap cgroup
-  itu khusus mencoba anonymous memory; kernel yang belum mendukung nested key
-  otomatis mendapat request plain lama.
-- Bila helper atau syscall tidak tersedia, Aggressive melanjutkan ke cgroup v2
-  dan cache fallback serta melaporkan penyebabnya.
-- WSL2 memakai kernel Linux, tetapi pelepasan RAM kembali ke host Windows tetap
-  diputuskan oleh WSL2.
-- Git Bash/MSYS bukan kernel Linux dan sengaja ditolak.
-
-Tidak ada program aman yang dapat menjamin jumlah RAM tertentu. Page aktif,
-locked, kernel-owned, atau page yang langsung dipakai kembali tidak akan tetap
-kosong. Mode Aggressive memang lebih kuat dan dapat menimbulkan page fault,
-storage I/O, atau stutter ketika aplikasi yang dipage-out digunakan lagi.
+Angka "bytes advised" di laporan adalah yang diterima kernel, bukan RAM yang
+pasti lepas. Yang jadi patokan adalah perubahan `MemAvailable` dan RSS setelah
+operasi.
