@@ -18,7 +18,8 @@ sedang berjalan, dan yang ditampilkan hanya angka yang benar-benar terukur.
 
 ### Windows
 
-1. Download ZIP Windows dari [Releases](https://github.com/fel-gg/bytesweep/releases/latest).
+1. Download ZIP Windows dari [Releases](https://github.com/fel-gg/bytesweep/releases/latest),
+   atau ambil isi folder [`windows/`](windows/) dari repo ini.
 2. Ekstrak, dan biarkan semua file tetap di satu folder.
 3. Jalankan `ByteSweep_x64.exe` (64-bit) atau `ByteSweep.exe` (32-bit).
 4. Pilih mode, lalu klik **Optimize**.
@@ -79,8 +80,9 @@ Beberapa antivirus menandai file `.exe` ini. Itu false positive: program ini
 di-compile dengan AutoIt, belum ditandatangani, dan memakai API memori Windows
 yang memang sering dicurigai heuristik antivirus.
 
-Kalau ragu, kamu bisa scan sendiri di [VirusTotal](https://www.virustotal.com)
-atau build sendiri dari source di repo ini.
+Kalau ragu, cocokkan hash file dengan
+[`windows/SHA256SUMS-windows.txt`](windows/SHA256SUMS-windows.txt), scan sendiri di
+[VirusTotal](https://www.virustotal.com), atau build sendiri dari source di repo ini.
 
 ## Build dari source
 
